@@ -16,7 +16,7 @@ Uma empresa de contrato de tecnologia perde tempo repetindo prazo, SLA, renovaç
 
 ## Out of scope
 
-- WhatsApp, Instagram, Telegram e site.
+- WhatsApp, Instagram e Telegram. O recorte 2 acrescenta uma única página em `GET /`.
 - Painel do atendente, login e cadastro de cliente.
 - Modelo de linguagem, RAG e PDF.
 - PIX, boleto real, planilha, e-mail e CRM.
@@ -69,7 +69,7 @@ Pedido:
 { "pergunta": "quando vence meu contrato?" }
 ```
 
-Resposta `200`:
+Resposta `200` do recorte 1, antes do fluxo:
 
 ```json
 {
@@ -78,6 +78,8 @@ Resposta `200`:
   "encaminhar_humano": false
 }
 ```
+
+A partir do recorte 2 a resposta vigente tem cinco campos. O contrato está na seção Recorte 2.
 
 `pergunta` ausente, nula, de outro tipo, vazia ou só com espaços → `422` `{ "erro": "pergunta_invalida" }`.
 
@@ -152,3 +154,58 @@ pytest
 ```
 
 Os testes cobrem classificador, atendimento com base trocada e a API (perguntas, validação e saúde). Não há chamada de rede.
+
+## Recorte 2
+
+O recorte 1 permanece. O classificador de tema não muda. `data/vertice_ti.json` não ganha campo. `GET /health`, o `422` e a recusa de subir sem a base continuam iguais. O nome do tema de chamado continua `chamado`.
+
+A resposta de `POST /v1/perguntas` passa a ter sempre cinco campos: `tema`, `resposta`, `encaminhar_humano`, `fluxo` e `resumo`.
+
+Suporte, quando a base responde:
+
+```json
+{
+  "tema": "prazo",
+  "resposta": "O contrato de suporte da Vértice TI vale 12 meses a partir da assinatura.",
+  "encaminhar_humano": false,
+  "fluxo": "suporte",
+  "resumo": null
+}
+```
+
+Venda, pedido de contrato novo sem tema na base:
+
+```json
+{
+  "tema": "desconhecido",
+  "resposta": "Não encontrei esse assunto na base da Vértice TI. Um atendente continua a conversa.",
+  "encaminhar_humano": true,
+  "fluxo": "venda",
+  "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base."
+}
+```
+
+Fora da base e sem sinal de venda:
+
+```json
+{
+  "tema": "desconhecido",
+  "resposta": "Não encontrei esse assunto na base da Vértice TI. Um atendente continua a conversa.",
+  "encaminhar_humano": true,
+  "fluxo": "desconhecido",
+  "resumo": "Pergunta: quero falar sobre o clima. Motivo: assunto fora da base."
+}
+```
+
+Regras, nesta ordem:
+
+1. O tema sai do classificador atual. O fluxo é decidido depois.
+2. Tema `prazo`, `sla`, `renovacao`, `boleto` ou `chamado` define `fluxo` `suporte` e `resumo` nulo. Vale mesmo que a frase contenha um sinal de venda.
+3. Tema `desconhecido` com um sinal de venda define `fluxo` `venda`. Os sinais, já normalizados como no classificador, são `contratar`, `proposta`, `orcamento`, `licenca` e `fechar`. Cada um conta se aparecer como trecho.
+4. Qualquer outro texto define `fluxo` `desconhecido`.
+5. `resumo` é nulo quando o fluxo é `suporte`. Nos outros fluxos o texto é `Pergunta: {pergunta original}. Motivo: {motivo}.` O motivo de venda é `venda sem resposta na base`. O motivo desconhecido é `assunto fora da base`. A pergunta no resumo é o texto recebido, sem normalizar.
+6. `encaminhar_humano` continua copiado da base. Na base real, venda e desconhecido usam o tema `desconhecido`, cuja flag é verdadeira.
+
+`GET /` entrega uma página com um campo, a resposta e o resumo quando ele não for nulo. A página chama `POST /v1/perguntas`. Não há fila, login nem WhatsApp.
+
+Os testes que comparam o JSON inteiro passam a esperar `fluxo` e `resumo`. Há teste novo para `quero uma proposta` e para `GET /`.
