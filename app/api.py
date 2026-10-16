@@ -42,3 +42,8 @@ def criar_app(atendimento: Atendimento) -> FastAPI:
 def criar_app_de_arquivo(caminho: Path) -> FastAPI:
     base = BaseConhecimento(caminho)
     return criar_app(Atendimento(classificar, base))
+
+
+app = criar_app_de_arquivo(
+    Path(__file__).resolve().parents[1] / "data" / "vertice_ti.json"
+)
