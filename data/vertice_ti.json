@@ -1,0 +1,26 @@
+{
+  "prazo": {
+    "resposta": "O contrato de suporte da Vértice TI vale 12 meses a partir da assinatura.",
+    "encaminhar_humano": false
+  },
+  "sla": {
+    "resposta": "A primeira resposta ocorre em até 4 horas úteis. A disponibilidade acordada é de 99,5% ao mês.",
+    "encaminhar_humano": false
+  },
+  "renovacao": {
+    "resposta": "A renovação é automática. A Vértice TI avisa por e-mail 30 dias antes do vencimento.",
+    "encaminhar_humano": false
+  },
+  "boleto": {
+    "resposta": "O boleto sai por e-mail todo dia 10. A segunda via fica com o financeiro da Vértice TI.",
+    "encaminhar_humano": false
+  },
+  "chamado": {
+    "resposta": "O status do chamado segue o protocolo aberto com a Vértice TI. Os estados são aberto, em andamento e concluído.",
+    "encaminhar_humano": false
+  },
+  "desconhecido": {
+    "resposta": "Não encontrei esse assunto na base da Vértice TI. Um atendente continua a conversa.",
+    "encaminhar_humano": true
+  }
+}
