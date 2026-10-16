@@ -1,0 +1,44 @@
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, field_validator
+
+from app.atendimento import Atendimento
+from app.base import BaseConhecimento
+from app.classificador import classificar
+
+
+class PerguntaIn(BaseModel):
+    pergunta: str
+
+    @field_validator("pergunta")
+    @classmethod
+    def nao_vazia(cls, valor: str) -> str:
+        if not valor.strip():
+            raise ValueError("pergunta_invalida")
+        return valor
+
+
+def criar_app(atendimento: Atendimento) -> FastAPI:
+    app = FastAPI()
+
+    @app.exception_handler(RequestValidationError)
+    async def pergunta_invalida(request, exc: RequestValidationError):
+        return JSONResponse(status_code=422, content={"erro": "pergunta_invalida"})
+
+    @app.get("/health")
+    def health() -> dict:
+        return {"status": "ok"}
+
+    @app.post("/v1/perguntas")
+    def perguntas(corpo: PerguntaIn) -> dict:
+        return atendimento.responder(corpo.pergunta)
+
+    return app
+
+
+def criar_app_de_arquivo(caminho: Path) -> FastAPI:
+    base = BaseConhecimento(caminho)
+    return criar_app(Atendimento(classificar, base))
