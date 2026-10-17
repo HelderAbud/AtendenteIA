@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, field_validator
 
 from app.atendimento import Atendimento
@@ -21,12 +21,19 @@ class PerguntaIn(BaseModel):
         return valor
 
 
+PAGINA = Path(__file__).resolve().parents[1] / "web" / "index.html"
+
+
 def criar_app(atendimento: Atendimento) -> FastAPI:
     app = FastAPI()
 
     @app.exception_handler(RequestValidationError)
     async def pergunta_invalida(request, exc: RequestValidationError):
         return JSONResponse(status_code=422, content={"erro": "pergunta_invalida"})
+
+    @app.get("/", response_class=HTMLResponse)
+    def pagina() -> str:
+        return PAGINA.read_text(encoding="utf-8")
 
     @app.get("/health")
     def health() -> dict:

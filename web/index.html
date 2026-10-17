@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>AtendeIA</title>
+</head>
+<body>
+  <form id="form">
+    <label for="pergunta">Pergunta</label>
+    <input id="pergunta" name="pergunta" type="text">
+    <button type="submit">Enviar</button>
+  </form>
+  <p id="resposta"></p>
+  <p id="resumo"></p>
+  <script>
+    const form = document.getElementById("form");
+    const campo = document.getElementById("pergunta");
+    const resposta = document.getElementById("resposta");
+    const resumo = document.getElementById("resumo");
+    form.addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      const pedido = await fetch("/v1/perguntas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pergunta: campo.value })
+      });
+      const corpo = await pedido.json();
+      resposta.textContent = corpo.resposta || "";
+      resumo.textContent = corpo.resumo || "";
+    });
+  </script>
+</body>
+</html>
