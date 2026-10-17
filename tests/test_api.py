@@ -49,11 +49,19 @@ def test_health_nao_le_a_base() -> None:
 def test_perguntas_da_spec(pergunta: str, tema: str) -> None:
     client = TestClient(criar_app_de_arquivo(ARQUIVO))
     resposta = client.post("/v1/perguntas", json={"pergunta": pergunta})
+    if tema == "desconhecido":
+        fluxo = "desconhecido"
+        resumo = f"Pergunta: {pergunta}. Motivo: assunto fora da base."
+    else:
+        fluxo = "suporte"
+        resumo = None
     assert resposta.status_code == 200
     assert resposta.json() == {
         "tema": tema,
         "resposta": TEXTOS[tema],
         "encaminhar_humano": tema == "desconhecido",
+        "fluxo": fluxo,
+        "resumo": resumo,
     }
 
 
@@ -78,3 +86,16 @@ def test_base_invalida_impede_a_subida(tmp_path: Path) -> None:
     caminho.write_text(json.dumps({"prazo": {}}), encoding="utf-8")
     with pytest.raises(ValueError):
         criar_app_de_arquivo(caminho)
+
+
+def test_proposta_vira_venda() -> None:
+    client = TestClient(criar_app_de_arquivo(ARQUIVO))
+    resposta = client.post("/v1/perguntas", json={"pergunta": "quero uma proposta"})
+    assert resposta.status_code == 200
+    assert resposta.json() == {
+        "tema": "desconhecido",
+        "resposta": TEXTOS["desconhecido"],
+        "encaminhar_humano": True,
+        "fluxo": "venda",
+        "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
+    }
