@@ -43,3 +43,27 @@ def test_venda_usa_a_resposta_da_base_e_o_resumo() -> None:
         "fluxo": "venda",
         "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
     }
+
+
+def test_flag_falsa_nao_entra_na_fila() -> None:
+    atendimento = Atendimento(classificar, BaseFalsa())
+    atendimento.responder("quero uma proposta")
+    assert atendimento.encaminhamentos() == []
+
+
+def test_flag_verdadeira_entra_na_ordem() -> None:
+    atendimento = Atendimento(classificar, BaseSempreHumano())
+    atendimento.responder("quando vence meu contrato?")
+    atendimento.responder("quero uma proposta")
+    assert atendimento.encaminhamentos() == [
+        {
+            "pergunta": "quando vence meu contrato?",
+            "fluxo": "suporte",
+            "resumo": None,
+        },
+        {
+            "pergunta": "quero uma proposta",
+            "fluxo": "venda",
+            "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
+        },
+    ]
