@@ -26,6 +26,8 @@ py -3 -m venv .venv
 .venv\Scripts\python.exe -m uvicorn app.api:app --host 127.0.0.1 --port 8000
 ```
 
+GET http://127.0.0.1:8000/ abre a página da pergunta.
+
 `GET http://127.0.0.1:8000/health`
 
 ```json

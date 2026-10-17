@@ -99,3 +99,15 @@ def test_proposta_vira_venda() -> None:
         "fluxo": "venda",
         "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
     }
+
+
+def test_raiz_serve_a_pagina() -> None:
+    client = TestClient(criar_app(Atendimento(classificar, BaseQueFalha())))
+    resposta = client.get("/")
+    assert resposta.status_code == 200
+    assert "text/html" in resposta.headers["content-type"]
+    texto = resposta.text
+    assert 'id="pergunta"' in texto
+    assert 'id="resposta"' in texto
+    assert 'id="resumo"' in texto
+    assert "/v1/perguntas" in texto
