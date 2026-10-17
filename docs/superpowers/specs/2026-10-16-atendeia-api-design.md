@@ -206,6 +206,26 @@ Regras, nesta ordem:
 5. `resumo` é nulo quando o fluxo é `suporte`. Nos outros fluxos o texto é `Pergunta: {pergunta original}. Motivo: {motivo}.` O motivo de venda é `venda sem resposta na base`. O motivo desconhecido é `assunto fora da base`. A pergunta no resumo é o texto recebido, sem normalizar.
 6. `encaminhar_humano` continua copiado da base. Na base real, venda e desconhecido usam o tema `desconhecido`, cuja flag é verdadeira.
 
-`GET /` entrega uma página com um campo, a resposta e o resumo quando ele não for nulo. A página chama `POST /v1/perguntas`. Não há fila, login nem WhatsApp.
+`GET /` entrega uma página com um campo, a resposta e o resumo quando ele não for nulo. A página chama `POST /v1/perguntas`. Neste recorte não há fila. Login e WhatsApp continuam fora.
 
 Os testes que comparam o JSON inteiro passam a esperar `fluxo` e `resumo`. Há teste novo para `quero uma proposta` e para `GET /`.
+
+## Recorte 3
+
+Os recortes 1 e 2 permanecem. Classificador, `data/vertice_ti.json`, fluxo, resumo, `GET /`, `GET /health` e o `422` não mudam de regra. Não há banco, login, WhatsApp nem modelo de linguagem.
+
+`POST /v1/perguntas` continua devolvendo os cinco campos. Quando `encaminhar_humano` é verdadeiro, a mesma chamada guarda um item na lista em memória do processo. Flag falsa não entra, mesmo que a frase tenha sinal de venda. A flag continua copiada da base: o teste com base falsa pode ter fluxo `venda` e lista vazia.
+
+`GET /v1/encaminhamentos` devolve a lista, na ordem de chegada. Lista vazia é `[]`. Cada item tem só três campos:
+
+```json
+[
+  {
+    "pergunta": "quero uma proposta",
+    "fluxo": "venda",
+    "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base."
+  }
+]
+```
+
+`resumo` no item pode ser nulo quando a base força a flag verdadeira num tema de suporte. A pergunta guardada é o texto recebido, sem normalizar. Pergunta inválida não entra na lista. `GET /health` não lê a base nem a lista. Dois processos não compartilham a lista: ao reiniciar, ela volta a `[]`. A página em `GET /` não muda.
