@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, field_validator
 
 from app.atendimento import Atendimento
@@ -51,6 +51,16 @@ def criar_app(atendimento: Atendimento) -> FastAPI:
     @app.get("/v1/encaminhamentos")
     def encaminhamentos() -> list:
         return atendimento.encaminhamentos()
+
+    @app.delete("/v1/encaminhamentos/{item_id}")
+    def concluir_encaminhamento(item_id: int) -> Response:
+        try:
+            atendimento.concluir(item_id)
+        except KeyError:
+            return JSONResponse(
+                status_code=404, content={"erro": "encaminhamento_inexistente"}
+            )
+        return Response(status_code=204)
 
     return app
 

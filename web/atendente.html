@@ -22,10 +22,22 @@
           const pergunta = document.createElement("p");
           const fluxo = document.createElement("p");
           const resumo = document.createElement("p");
+          const botao = document.createElement("button");
           pergunta.textContent = item.pergunta;
           fluxo.textContent = item.fluxo;
           resumo.textContent = item.resumo || "";
-          bloco.append(pergunta, fluxo, resumo);
+          botao.textContent = "Concluir";
+          botao.addEventListener("click", async () => {
+            const pedido = await fetch("/v1/encaminhamentos/" + item.id, { method: "DELETE" });
+            if (pedido.status !== 204) {
+              return;
+            }
+            bloco.remove();
+            if (!lista.querySelector("article")) {
+              lista.textContent = "Nenhum encaminhamento.";
+            }
+          });
+          bloco.append(pergunta, fluxo, resumo, botao);
           lista.append(bloco);
         }
       });
