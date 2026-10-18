@@ -38,3 +38,28 @@ def test_id_ausente_levanta_key_error() -> None:
     fila = Fila()
     with pytest.raises(KeyError):
         fila.remover(1)
+
+
+def test_arquivo_sobrevive_e_nao_reusa_id(tmp_path) -> None:
+    caminho = tmp_path / "fila.sqlite"
+    primeira = Fila(caminho)
+    primeira.registrar("quero uma proposta", "venda", "resumo")
+    primeira.remover(1)
+    segunda = Fila(caminho)
+    segunda.registrar("quero falar sobre o clima", "desconhecido", None)
+    assert segunda.listar() == [
+        {
+            "id": 2,
+            "pergunta": "quero falar sobre o clima",
+            "fluxo": "desconhecido",
+            "resumo": None,
+        }
+    ]
+
+
+def test_mesmo_arquivo_e_visto_por_duas_filas(tmp_path) -> None:
+    caminho = tmp_path / "fila.sqlite"
+    Fila(caminho).registrar("quero uma proposta", "venda", "resumo")
+    assert Fila(caminho).listar() == [
+        {"id": 1, "pergunta": "quero uma proposta", "fluxo": "venda", "resumo": "resumo"}
+    ]

@@ -1,25 +1,73 @@
+import sqlite3
+from pathlib import Path
+
+
 class Fila:
-    def __init__(self) -> None:
-        self._itens: list[dict] = []
-        self._proximo_id = 1
+    def __init__(self, banco: Path | None = None) -> None:
+        self._banco = banco
+        self._memoria = None
+        if banco is None:
+            self._memoria = sqlite3.connect(":memory:", check_same_thread=False)
+            self._criar(self._memoria)
+        else:
+            banco.parent.mkdir(parents=True, exist_ok=True)
+            with self._conectar() as conexao:
+                self._criar(conexao)
+
+    def _conectar(self) -> sqlite3.Connection:
+        if self._memoria is not None:
+            return self._memoria
+        return sqlite3.connect(self._banco)
+
+    def _fechar(self, conexao: sqlite3.Connection) -> None:
+        if self._memoria is None:
+            conexao.close()
+
+    def _criar(self, conexao: sqlite3.Connection) -> None:
+        conexao.execute(
+            """
+            CREATE TABLE IF NOT EXISTS encaminhamentos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                pergunta TEXT NOT NULL,
+                fluxo TEXT NOT NULL,
+                resumo TEXT
+            )
+            """
+        )
+        conexao.commit()
 
     def registrar(self, pergunta: str, fluxo: str, resumo: str | None) -> None:
-        self._itens.append(
-            {
-                "id": self._proximo_id,
-                "pergunta": pergunta,
-                "fluxo": fluxo,
-                "resumo": resumo,
-            }
-        )
-        self._proximo_id += 1
+        conexao = self._conectar()
+        try:
+            conexao.execute(
+                "INSERT INTO encaminhamentos (pergunta, fluxo, resumo) VALUES (?, ?, ?)",
+                (pergunta, fluxo, resumo),
+            )
+            conexao.commit()
+        finally:
+            self._fechar(conexao)
 
     def listar(self) -> list[dict]:
-        return list(self._itens)
+        conexao = self._conectar()
+        try:
+            linhas = conexao.execute(
+                "SELECT id, pergunta, fluxo, resumo FROM encaminhamentos ORDER BY id"
+            ).fetchall()
+        finally:
+            self._fechar(conexao)
+        return [
+            {"id": linha[0], "pergunta": linha[1], "fluxo": linha[2], "resumo": linha[3]}
+            for linha in linhas
+        ]
 
     def remover(self, item_id: int) -> None:
-        for indice, item in enumerate(self._itens):
-            if item["id"] == item_id:
-                del self._itens[indice]
-                return
-        raise KeyError(item_id)
+        conexao = self._conectar()
+        try:
+            cursor = conexao.execute(
+                "DELETE FROM encaminhamentos WHERE id = ?", (item_id,)
+            )
+            conexao.commit()
+            if cursor.rowcount == 0:
+                raise KeyError(item_id)
+        finally:
+            self._fechar(conexao)
