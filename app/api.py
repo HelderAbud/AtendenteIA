@@ -43,6 +43,10 @@ def criar_app(atendimento: Atendimento) -> FastAPI:
     def perguntas(corpo: PerguntaIn) -> dict:
         return atendimento.responder(corpo.pergunta)
 
+    @app.get("/v1/encaminhamentos")
+    def encaminhamentos() -> list:
+        return atendimento.encaminhamentos()
+
     return app
 
 

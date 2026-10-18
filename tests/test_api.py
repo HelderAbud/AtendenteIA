@@ -111,3 +111,46 @@ def test_raiz_serve_a_pagina() -> None:
     assert 'id="resposta"' in texto
     assert 'id="resumo"' in texto
     assert "/v1/perguntas" in texto
+
+
+def test_lista_nao_le_a_base_e_comeca_vazia() -> None:
+    client = TestClient(criar_app(Atendimento(classificar, BaseQueFalha())))
+    resposta = client.get("/v1/encaminhamentos")
+    assert resposta.status_code == 200
+    assert resposta.json() == []
+
+
+def test_so_a_flag_verdadeira_entra_na_lista() -> None:
+    client = TestClient(criar_app_de_arquivo(ARQUIVO))
+    client.post("/v1/perguntas", json={"pergunta": "quando vence meu contrato?"})
+    client.post("/v1/perguntas", json={"pergunta": "quero uma proposta"})
+    client.post("/v1/perguntas", json={"pergunta": "quero falar sobre o clima"})
+    resposta = client.get("/v1/encaminhamentos")
+    assert resposta.status_code == 200
+    assert resposta.json() == [
+        {
+            "pergunta": "quero uma proposta",
+            "fluxo": "venda",
+            "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
+        },
+        {
+            "pergunta": "quero falar sobre o clima",
+            "fluxo": "desconhecido",
+            "resumo": "Pergunta: quero falar sobre o clima. Motivo: assunto fora da base.",
+        },
+    ]
+
+
+def test_pergunta_invalida_nao_entra_na_lista() -> None:
+    client = TestClient(criar_app_de_arquivo(ARQUIVO))
+    invalida = client.post("/v1/perguntas", json={"pergunta": "   "})
+    lista = client.get("/v1/encaminhamentos")
+    assert invalida.status_code == 422
+    assert lista.json() == []
+
+
+def test_duas_apps_nao_compartilham_a_lista() -> None:
+    um = TestClient(criar_app_de_arquivo(ARQUIVO))
+    outro = TestClient(criar_app_de_arquivo(ARQUIVO))
+    um.post("/v1/perguntas", json={"pergunta": "quero uma proposta"})
+    assert outro.get("/v1/encaminhamentos").json() == []

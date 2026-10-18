@@ -28,6 +28,8 @@ py -3 -m venv .venv
 
 GET http://127.0.0.1:8000/ abre a página da pergunta.
 
+GET http://127.0.0.1:8000/v1/encaminhamentos devolve a lista em memória das perguntas com encaminhar humano verdadeiro. Ela começa vazia e some ao reiniciar o processo.
+
 `GET http://127.0.0.1:8000/health`
 
 ```json
