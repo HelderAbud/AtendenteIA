@@ -256,3 +256,15 @@ O `id` é um inteiro que começa em 1. Cada registro novo soma 1. Um `id` removi
 `DELETE /v1/encaminhamentos/{id}` remove só esse item e devolve `204` sem corpo. `id` inteiro que não está na lista devolve `404` `{ "erro": "encaminhamento_inexistente" }`. A rota não lê a base. `POST /v1/perguntas` continua com os cinco campos e não devolve o `id`.
 
 A página `GET /atendente` mostra um botão `Concluir` em cada item. O botão chama o `DELETE` daquele `id` e tira o item da tela. Se não sobrar item, a página volta a mostrar `Nenhum encaminhamento.`
+
+## Recorte 6
+
+Os recortes 1 a 5 permanecem na resposta HTTP. A lista deixa de morar só na memória e passa para um arquivo SQLite. Não há Postgres, login, WhatsApp nem modelo de linguagem neste recorte.
+
+Depois deste recorte, a ordem é esta: Postgres, com a mesma tabela saindo do arquivo; login, em que a página do atendente e o `DELETE` passam a exigir sessão; WhatsApp, usando a mesma resposta e a mesma lista.
+
+A tabela `encaminhamentos` tem `id` inteiro gerado pelo SQLite com `AUTOINCREMENT`, `pergunta`, `fluxo` e `resumo`. O `id` começa em 1 e não volta a ser usado, nem depois de apagar a linha e nem depois de reiniciar. `resumo` nulo fica `NULL` no arquivo e volta `None` na lista. A ordem da lista é a ordem do `id`.
+
+O arquivo de operação é `data/atendeia.sqlite`. Ele não entra no Git. Sem caminho, a fila usa um SQLite só daquele objeto, e dois objetos não se veem. Com o mesmo caminho, dois objetos e dois processos veem as mesmas linhas. Fechar o objeto e abrir outro no mesmo arquivo devolve as linhas gravadas.
+
+`GET /v1/encaminhamentos`, `DELETE /v1/encaminhamentos/{id}`, o `204`, o `404`, os cinco campos do `POST` e as duas páginas não mudam de contrato. `GET /health` continua sem ler a base de conhecimento. O `DELETE` de id ausente continua sem ler essa base.
