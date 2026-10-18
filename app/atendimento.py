@@ -25,3 +25,6 @@ class Atendimento:
 
     def encaminhamentos(self) -> list[dict]:
         return self._fila.listar()
+
+    def concluir(self, item_id: int) -> None:
+        self._fila.remover(item_id)

@@ -69,3 +69,18 @@ def test_flag_verdadeira_entra_na_ordem() -> None:
             "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
         },
     ]
+
+
+def test_concluir_remove_so_o_id() -> None:
+    atendimento = Atendimento(classificar, BaseSempreHumano())
+    atendimento.responder("quando vence meu contrato?")
+    atendimento.responder("quero uma proposta")
+    atendimento.concluir(1)
+    assert atendimento.encaminhamentos() == [
+        {
+            "id": 2,
+            "pergunta": "quero uma proposta",
+            "fluxo": "venda",
+            "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
+        }
+    ]
