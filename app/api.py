@@ -65,11 +65,12 @@ def criar_app(atendimento: Atendimento) -> FastAPI:
     return app
 
 
-def criar_app_de_arquivo(caminho: Path) -> FastAPI:
+def criar_app_de_arquivo(caminho: Path, banco: Path | None = None) -> FastAPI:
     base = BaseConhecimento(caminho)
-    return criar_app(Atendimento(classificar, base))
+    return criar_app(Atendimento(classificar, base, banco))
 
 
 app = criar_app_de_arquivo(
-    Path(__file__).resolve().parents[1] / "data" / "vertice_ti.json"
+    Path(__file__).resolve().parents[1] / "data" / "vertice_ti.json",
+    Path(__file__).resolve().parents[1] / "data" / "atendeia.sqlite",
 )

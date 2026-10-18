@@ -34,6 +34,8 @@ GET http://127.0.0.1:8000/atendente abre a página do atendente.
 
 `DELETE http://127.0.0.1:8000/v1/encaminhamentos/{id}` tira esse item da lista. Id ausente devolve 404.
 
+A lista fica em `data/atendeia.sqlite` e continua depois de reiniciar o processo. Esse arquivo não entra no Git.
+
 `GET http://127.0.0.1:8000/health`
 
 ```json

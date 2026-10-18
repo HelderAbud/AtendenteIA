@@ -200,3 +200,20 @@ def test_delete_de_id_ausente_nao_le_a_base() -> None:
     resposta = client.delete("/v1/encaminhamentos/1")
     assert resposta.status_code == 404
     assert resposta.json() == {"erro": "encaminhamento_inexistente"}
+
+
+def test_dois_apps_no_mesmo_banco_compartilham_a_lista(tmp_path) -> None:
+    banco = tmp_path / "fila.sqlite"
+    um = TestClient(criar_app_de_arquivo(ARQUIVO, banco))
+    outro = TestClient(criar_app_de_arquivo(ARQUIVO, banco))
+    um.post("/v1/perguntas", json={"pergunta": "quero uma proposta"})
+    outro.delete("/v1/encaminhamentos/1")
+    um.post("/v1/perguntas", json={"pergunta": "quero falar sobre o clima"})
+    assert outro.get("/v1/encaminhamentos").json() == [
+        {
+            "id": 2,
+            "pergunta": "quero falar sobre o clima",
+            "fluxo": "desconhecido",
+            "resumo": "Pergunta: quero falar sobre o clima. Motivo: assunto fora da base.",
+        }
+    ]
