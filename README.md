@@ -32,6 +32,8 @@ GET http://127.0.0.1:8000/v1/encaminhamentos devolve a lista em memória das per
 
 GET http://127.0.0.1:8000/atendente abre a página do atendente.
 
+`DELETE http://127.0.0.1:8000/v1/encaminhamentos/{id}` tira esse item da lista. Id ausente devolve 404.
+
 `GET http://127.0.0.1:8000/health`
 
 ```json

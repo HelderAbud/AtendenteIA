@@ -167,3 +167,36 @@ def test_atendente_serve_a_pagina() -> None:
     assert 'id="lista"' in texto
     assert "/v1/encaminhamentos" in texto
     assert "Nenhum encaminhamento." in texto
+    assert "Concluir" in texto
+    assert "DELETE" in texto
+
+
+def test_delete_remove_o_item_e_nao_reusa_o_id() -> None:
+    client = TestClient(criar_app_de_arquivo(ARQUIVO))
+    client.post("/v1/perguntas", json={"pergunta": "quero uma proposta"})
+    client.post("/v1/perguntas", json={"pergunta": "quero falar sobre o clima"})
+    removido = client.delete("/v1/encaminhamentos/1")
+    assert removido.status_code == 204
+    assert removido.content == b""
+    client.post("/v1/perguntas", json={"pergunta": "quero uma proposta"})
+    assert client.get("/v1/encaminhamentos").json() == [
+        {
+            "id": 2,
+            "pergunta": "quero falar sobre o clima",
+            "fluxo": "desconhecido",
+            "resumo": "Pergunta: quero falar sobre o clima. Motivo: assunto fora da base.",
+        },
+        {
+            "id": 3,
+            "pergunta": "quero uma proposta",
+            "fluxo": "venda",
+            "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
+        },
+    ]
+
+
+def test_delete_de_id_ausente_nao_le_a_base() -> None:
+    client = TestClient(criar_app(Atendimento(classificar, BaseQueFalha())))
+    resposta = client.delete("/v1/encaminhamentos/1")
+    assert resposta.status_code == 404
+    assert resposta.json() == {"erro": "encaminhamento_inexistente"}
