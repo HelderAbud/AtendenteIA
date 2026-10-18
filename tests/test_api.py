@@ -129,11 +129,13 @@ def test_so_a_flag_verdadeira_entra_na_lista() -> None:
     assert resposta.status_code == 200
     assert resposta.json() == [
         {
+            "id": 1,
             "pergunta": "quero uma proposta",
             "fluxo": "venda",
             "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
         },
         {
+            "id": 2,
             "pergunta": "quero falar sobre o clima",
             "fluxo": "desconhecido",
             "resumo": "Pergunta: quero falar sobre o clima. Motivo: assunto fora da base.",

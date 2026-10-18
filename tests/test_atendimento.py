@@ -57,11 +57,13 @@ def test_flag_verdadeira_entra_na_ordem() -> None:
     atendimento.responder("quero uma proposta")
     assert atendimento.encaminhamentos() == [
         {
+            "id": 1,
             "pergunta": "quando vence meu contrato?",
             "fluxo": "suporte",
             "resumo": None,
         },
         {
+            "id": 2,
             "pergunta": "quero uma proposta",
             "fluxo": "venda",
             "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",

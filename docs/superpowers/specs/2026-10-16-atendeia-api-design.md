@@ -235,3 +235,24 @@ Os recortes 1 e 2 permanecem. Classificador, `data/vertice_ti.json`, fluxo, resu
 Os recortes 1, 2 e 3 permanecem. A lista, os cinco campos, o classificador, `data/vertice_ti.json`, `GET /`, `GET /health` e o `422` não mudam de regra. Não há banco, login, WhatsApp nem modelo de linguagem. Nenhum item ganha campo novo.
 
 `GET /atendente` entrega uma página que lê `GET /v1/encaminhamentos` e mostra os itens na ordem recebida. Cada item aparece com a pergunta, o fluxo e o resumo. Resumo nulo aparece vazio. Lista vazia mostra o texto `Nenhum encaminhamento.` A página não grava nada e não lê a base. `GET /` continua sendo a página da pergunta.
+
+## Recorte 5
+
+Os recortes 1 a 4 permanecem, com uma mudança na lista: cada item ganha `id`. Não há banco, login, WhatsApp nem modelo de linguagem. A lista continua em memória e some ao reiniciar. O banco e o WhatsApp ficam para os recortes seguintes, nessa ordem.
+
+O `id` é um inteiro que começa em 1. Cada registro novo soma 1. Um `id` removido não volta a ser usado no mesmo processo. `GET /v1/encaminhamentos` passa a devolver quatro campos, nesta ordem de chaves no teste: `id`, `pergunta`, `fluxo`, `resumo`.
+
+```json
+[
+  {
+    "id": 1,
+    "pergunta": "quero uma proposta",
+    "fluxo": "venda",
+    "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base."
+  }
+]
+```
+
+`DELETE /v1/encaminhamentos/{id}` remove só esse item e devolve `204` sem corpo. `id` inteiro que não está na lista devolve `404` `{ "erro": "encaminhamento_inexistente" }`. A rota não lê a base. `POST /v1/perguntas` continua com os cinco campos e não devolve o `id`.
+
+A página `GET /atendente` mostra um botão `Concluir` em cada item. O botão chama o `DELETE` daquele `id` e tira o item da tela. Se não sobrar item, a página volta a mostrar `Nenhum encaminhamento.`
