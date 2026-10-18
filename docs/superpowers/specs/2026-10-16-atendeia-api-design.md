@@ -229,3 +229,9 @@ Os recortes 1 e 2 permanecem. Classificador, `data/vertice_ti.json`, fluxo, resu
 ```
 
 `resumo` no item pode ser nulo quando a base força a flag verdadeira num tema de suporte. A pergunta guardada é o texto recebido, sem normalizar. Pergunta inválida não entra na lista. `GET /health` não lê a base nem a lista. Dois processos não compartilham a lista: ao reiniciar, ela volta a `[]`. A página em `GET /` não muda.
+
+## Recorte 4
+
+Os recortes 1, 2 e 3 permanecem. A lista, os cinco campos, o classificador, `data/vertice_ti.json`, `GET /`, `GET /health` e o `422` não mudam de regra. Não há banco, login, WhatsApp nem modelo de linguagem. Nenhum item ganha campo novo.
+
+`GET /atendente` entrega uma página que lê `GET /v1/encaminhamentos` e mostra os itens na ordem recebida. Cada item aparece com a pergunta, o fluxo e o resumo. Resumo nulo aparece vazio. Lista vazia mostra o texto `Nenhum encaminhamento.` A página não grava nada e não lê a base. `GET /` continua sendo a página da pergunta.

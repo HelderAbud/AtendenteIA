@@ -22,6 +22,7 @@ class PerguntaIn(BaseModel):
 
 
 PAGINA = Path(__file__).resolve().parents[1] / "web" / "index.html"
+ATENDENTE = Path(__file__).resolve().parents[1] / "web" / "atendente.html"
 
 
 def criar_app(atendimento: Atendimento) -> FastAPI:
@@ -34,6 +35,10 @@ def criar_app(atendimento: Atendimento) -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     def pagina() -> str:
         return PAGINA.read_text(encoding="utf-8")
+
+    @app.get("/atendente", response_class=HTMLResponse)
+    def atendente() -> str:
+        return ATENDENTE.read_text(encoding="utf-8")
 
     @app.get("/health")
     def health() -> dict:
