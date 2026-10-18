@@ -154,3 +154,14 @@ def test_duas_apps_nao_compartilham_a_lista() -> None:
     outro = TestClient(criar_app_de_arquivo(ARQUIVO))
     um.post("/v1/perguntas", json={"pergunta": "quero uma proposta"})
     assert outro.get("/v1/encaminhamentos").json() == []
+
+
+def test_atendente_serve_a_pagina() -> None:
+    client = TestClient(criar_app(Atendimento(classificar, BaseQueFalha())))
+    resposta = client.get("/atendente")
+    assert resposta.status_code == 200
+    assert "text/html" in resposta.headers["content-type"]
+    texto = resposta.text
+    assert 'id="lista"' in texto
+    assert "/v1/encaminhamentos" in texto
+    assert "Nenhum encaminhamento." in texto

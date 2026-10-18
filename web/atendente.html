@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>AtendeIA</title>
+</head>
+<body>
+  <h1>Encaminhamentos</h1>
+  <div id="lista">Nenhum encaminhamento.</div>
+  <script>
+    const lista = document.getElementById("lista");
+    fetch("/v1/encaminhamentos")
+      .then((pedido) => pedido.json())
+      .then((itens) => {
+        if (!itens.length) {
+          lista.textContent = "Nenhum encaminhamento.";
+          return;
+        }
+        lista.textContent = "";
+        for (const item of itens) {
+          const bloco = document.createElement("article");
+          const pergunta = document.createElement("p");
+          const fluxo = document.createElement("p");
+          const resumo = document.createElement("p");
+          pergunta.textContent = item.pergunta;
+          fluxo.textContent = item.fluxo;
+          resumo.textContent = item.resumo || "";
+          bloco.append(pergunta, fluxo, resumo);
+          lista.append(bloco);
+        }
+      });
+  </script>
+</body>
+</html>
