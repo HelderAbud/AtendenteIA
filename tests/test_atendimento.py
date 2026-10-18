@@ -84,3 +84,20 @@ def test_concluir_remove_so_o_id() -> None:
             "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
         }
     ]
+
+
+def test_mesmo_banco_sobrevive_entre_atendimentos(tmp_path) -> None:
+    banco = tmp_path / "fila.sqlite"
+    primeiro = Atendimento(classificar, BaseSempreHumano(), banco)
+    primeiro.responder("quando vence meu contrato?")
+    primeiro.concluir(1)
+    segundo = Atendimento(classificar, BaseSempreHumano(), banco)
+    segundo.responder("quero uma proposta")
+    assert segundo.encaminhamentos() == [
+        {
+            "id": 2,
+            "pergunta": "quero uma proposta",
+            "fluxo": "venda",
+            "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
+        }
+    ]
