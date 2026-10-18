@@ -3,10 +3,10 @@ from app.fluxo import decidir_fluxo, montar_resumo
 
 
 class Atendimento:
-    def __init__(self, classificar_fn, base) -> None:
+    def __init__(self, classificar_fn, base, banco=None) -> None:
         self._classificar = classificar_fn
         self._base = base
-        self._fila = Fila()
+        self._fila = Fila(banco)
 
     def responder(self, pergunta: str) -> dict:
         tema = self._classificar(pergunta)
