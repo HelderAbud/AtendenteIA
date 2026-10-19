@@ -1,12 +1,16 @@
 from app.fila import Fila
+from app.fila_postgres import FilaPostgres
 from app.fluxo import decidir_fluxo, montar_resumo
 
 
 class Atendimento:
-    def __init__(self, classificar_fn, base, banco=None) -> None:
+    def __init__(self, classificar_fn, base, banco=None, postgres_url=None) -> None:
         self._classificar = classificar_fn
         self._base = base
-        self._fila = Fila(banco)
+        if postgres_url is not None:
+            self._fila = FilaPostgres(postgres_url)
+        else:
+            self._fila = Fila(banco)
 
     def responder(self, pergunta: str) -> dict:
         tema = self._classificar(pergunta)

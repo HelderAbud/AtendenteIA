@@ -1,3 +1,6 @@
+import psycopg
+import pytest
+
 from app.atendimento import Atendimento
 from app.classificador import classificar
 
@@ -92,6 +95,31 @@ def test_mesmo_banco_sobrevive_entre_atendimentos(tmp_path) -> None:
     primeiro.responder("quando vence meu contrato?")
     primeiro.concluir(1)
     segundo = Atendimento(classificar, BaseSempreHumano(), banco)
+    segundo.responder("quero uma proposta")
+    assert segundo.encaminhamentos() == [
+        {
+            "id": 2,
+            "pergunta": "quero uma proposta",
+            "fluxo": "venda",
+            "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
+        }
+    ]
+
+
+def test_mesmo_postgres_sobrevive_entre_atendimentos() -> None:
+    url = "postgresql://atendeia:atendeia@127.0.0.1:5437/atendeia"
+    try:
+        with psycopg.connect(url) as conexao:
+            conexao.execute("TRUNCATE encaminhamentos RESTART IDENTITY")
+            conexao.commit()
+    except psycopg.OperationalError:
+        pytest.skip("Postgres em 127.0.0.1:5437 indisponível")
+    except psycopg.errors.UndefinedTable:
+        pass
+    primeiro = Atendimento(classificar, BaseSempreHumano(), postgres_url=url)
+    primeiro.responder("quando vence meu contrato?")
+    primeiro.concluir(1)
+    segundo = Atendimento(classificar, BaseSempreHumano(), postgres_url=url)
     segundo.responder("quero uma proposta")
     assert segundo.encaminhamentos() == [
         {
