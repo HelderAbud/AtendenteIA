@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: atendeia
+      POSTGRES_PASSWORD: atendeia
+      POSTGRES_DB: atendeia
+    ports:
+      - "5437:5432"
