@@ -69,11 +69,15 @@ def criar_app(
         return atendimento.responder(corpo.pergunta)
 
     @app.get("/v1/encaminhamentos")
-    def encaminhamentos() -> list:
+    def encaminhamentos(request: Request):
+        if gate and not request.session.get("atendente"):
+            return JSONResponse(status_code=401, content={"erro": "sessao_ausente"})
         return atendimento.encaminhamentos()
 
     @app.delete("/v1/encaminhamentos/{item_id}")
-    def concluir_encaminhamento(item_id: int) -> Response:
+    def concluir_encaminhamento(request: Request, item_id: int) -> Response:
+        if gate and not request.session.get("atendente"):
+            return JSONResponse(status_code=401, content={"erro": "sessao_ausente"})
         try:
             atendimento.concluir(item_id)
         except KeyError:
