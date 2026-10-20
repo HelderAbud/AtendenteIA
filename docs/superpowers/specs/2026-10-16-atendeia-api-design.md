@@ -282,3 +282,20 @@ A variável é `ATENDEIA_DATABASE_URL`. O valor local é `postgresql://atendeia:
 Sem a variável, o `app` do módulo não abre `data/atendeia.sqlite`: a lista fica só naquele processo e some ao reiniciar. Com a variável, a API cria a tabela na subida, se ela ainda não existir, e a lista continua depois de reiniciar. Se o Postgres estiver parado, a API não sobe.
 
 `GET /health` continua `{ "status": "ok" }` e não consulta o banco. O `POST` continua com os cinco campos e sem `id`. O `DELETE` ausente continua `404` sem ler a base de conhecimento. O exemplo JSON de três campos no README permanece como está. A frase do README que ainda aponta a lista para o arquivo SQLite é atualizada neste recorte.
+
+## Recorte 8
+
+Os recortes 1 a 7 permanecem na resposta do cliente. WhatsApp e modelo de linguagem continuam fora. Não há cadastro, segundo usuário, papel nem tabela de login. A senha é de um único atendente e não entra no Git.
+
+O portão liga só quando a fábrica recebe os dois valores, `senha` e `session_secret`. No processo, eles vêm de `ATENDEIA_SENHA` e `ATENDEIA_SESSION_SECRET`. Vazio conta como ausente. Se faltar um dos dois, `GET /`, `POST /v1/perguntas`, `GET /atendente`, a lista e o `DELETE` continuam como no recorte 7. Os testes que não passam senha permanecem verdes.
+
+Com os dois valores:
+
+- `GET /login` devolve o formulário. O campo é `senha` e o botão é `Entrar`.
+- `POST /login` com a senha certa grava a sessão e responde `303` para `/atendente`. A sessão só marca que o atendente entrou. A senha não fica no cookie.
+- Senha errada responde `401`, mostra `Senha recusada.` e não cria sessão.
+- `GET /atendente` sem sessão responde `303` para `/login`. Com sessão, devolve a página que já existe.
+- `GET /v1/encaminhamentos` e `DELETE /v1/encaminhamentos/{id}` sem sessão respondem `401` `{ "erro": "sessao_ausente" }` e não leem a base de conhecimento. O `GET` entra no portão porque a página do atendente lê essa lista.
+- Com sessão, o `DELETE` continua `204` sem corpo, e o id ausente continua `404` `{ "erro": "encaminhamento_inexistente" }` sem ler a base.
+
+`GET /`, `POST /v1/perguntas` e `GET /health` não pedem sessão. O `POST` continua com os cinco campos e sem `id`. A página `web/atendente.html` não muda: o navegador manda o cookie na mesma origem. O exemplo JSON de três campos no README permanece.
