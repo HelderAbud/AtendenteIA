@@ -243,3 +243,24 @@ def test_dois_apps_no_mesmo_postgres_compartilham_a_lista() -> None:
             "resumo": "Pergunta: quero falar sobre o clima. Motivo: assunto fora da base.",
         }
     ]
+
+
+def test_senha_certa_abre_sessao_e_senha_errada_nao() -> None:
+    app = criar_app(
+        Atendimento(classificar, BaseQueFalha()),
+        senha="senha-teste",
+        session_secret="segredo-teste",
+    )
+    client = TestClient(app, follow_redirects=False)
+    formulario = client.get("/login")
+    assert formulario.status_code == 200
+    assert 'name="senha"' in formulario.text
+    assert "Entrar" in formulario.text
+    errada = client.post("/login", data={"senha": "outra"})
+    assert errada.status_code == 401
+    assert "Senha recusada." in errada.text
+    assert client.get("/atendente").status_code == 303
+    certa = client.post("/login", data={"senha": "senha-teste"})
+    assert certa.status_code == 303
+    assert certa.headers["location"] == "/atendente"
+    assert client.get("/atendente").status_code == 200
