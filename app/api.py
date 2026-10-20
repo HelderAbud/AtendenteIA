@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -65,12 +66,19 @@ def criar_app(atendimento: Atendimento) -> FastAPI:
     return app
 
 
-def criar_app_de_arquivo(caminho: Path, banco: Path | None = None) -> FastAPI:
+def criar_app_de_arquivo(
+    caminho: Path, banco: Path | None = None, postgres_url: str | None = None
+) -> FastAPI:
     base = BaseConhecimento(caminho)
-    return criar_app(Atendimento(classificar, base, banco))
+    return criar_app(Atendimento(classificar, base, banco, postgres_url))
 
 
-app = criar_app_de_arquivo(
-    Path(__file__).resolve().parents[1] / "data" / "vertice_ti.json",
-    Path(__file__).resolve().parents[1] / "data" / "atendeia.sqlite",
-)
+def _app_de_producao() -> FastAPI:
+    caminho = Path(__file__).resolve().parents[1] / "data" / "vertice_ti.json"
+    url = os.environ.get("ATENDEIA_DATABASE_URL")
+    if url:
+        return criar_app_de_arquivo(caminho, postgres_url=url)
+    return criar_app_de_arquivo(caminho)
+
+
+app = _app_de_producao()
