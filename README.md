@@ -38,6 +38,8 @@ GET http://127.0.0.1:8000/atendente abre a página do atendente.
 
 Com `ATENDEIA_DATABASE_URL`, a lista fica no Postgres e continua depois de reiniciar o processo. Sem essa variável, a lista fica só no processo e some ao reiniciar.
 
+Com `ATENDEIA_SENHA` e `ATENDEIA_SESSION_SECRET`, a página do atendente, a lista e o `DELETE` pedem entrada em `/login`. Sem uma das duas, essas rotas continuam abertas.
+
 `GET http://127.0.0.1:8000/health`
 
 ```json

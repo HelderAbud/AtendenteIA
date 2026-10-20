@@ -5,7 +5,7 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api import criar_app, criar_app_de_arquivo
+from app.api import _app_de_producao, criar_app, criar_app_de_arquivo
 from app.atendimento import Atendimento
 from app.classificador import classificar
 
@@ -284,3 +284,13 @@ def test_lista_e_delete_sem_sessao_nao_mexem_na_fila() -> None:
     assert client.get("/v1/encaminhamentos").json()[0]["id"] == 1
     assert client.delete("/v1/encaminhamentos/1").status_code == 204
     assert client.get("/v1/encaminhamentos").json() == []
+
+
+def test_app_de_producao_liga_o_portao_com_as_duas_variaveis(monkeypatch) -> None:
+    monkeypatch.setenv("ATENDEIA_SENHA", "senha-teste")
+    monkeypatch.setenv("ATENDEIA_SESSION_SECRET", "segredo-teste")
+    monkeypatch.delenv("ATENDEIA_DATABASE_URL", raising=False)
+    app = _app_de_producao()
+    client = TestClient(app, follow_redirects=False)
+    assert client.get("/atendente").status_code == 303
+    assert client.get("/atendente").headers["location"] == "/login"
