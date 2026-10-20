@@ -264,3 +264,23 @@ def test_senha_certa_abre_sessao_e_senha_errada_nao() -> None:
     assert certa.status_code == 303
     assert certa.headers["location"] == "/atendente"
     assert client.get("/atendente").status_code == 200
+
+
+def test_lista_e_delete_sem_sessao_nao_mexem_na_fila() -> None:
+    app = criar_app_de_arquivo(
+        ARQUIVO,
+        senha="senha-teste",
+        session_secret="segredo-teste",
+    )
+    client = TestClient(app, follow_redirects=False)
+    client.post("/v1/perguntas", json={"pergunta": "quero uma proposta"})
+    lista = client.get("/v1/encaminhamentos")
+    apagar = client.delete("/v1/encaminhamentos/1")
+    assert lista.status_code == 401
+    assert lista.json() == {"erro": "sessao_ausente"}
+    assert apagar.status_code == 401
+    assert apagar.json() == {"erro": "sessao_ausente"}
+    client.post("/login", data={"senha": "senha-teste"})
+    assert client.get("/v1/encaminhamentos").json()[0]["id"] == 1
+    assert client.delete("/v1/encaminhamentos/1").status_code == 204
+    assert client.get("/v1/encaminhamentos").json() == []
