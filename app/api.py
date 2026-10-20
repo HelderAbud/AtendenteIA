@@ -125,10 +125,21 @@ def criar_app_de_arquivo(
 
 def _app_de_producao() -> FastAPI:
     caminho = Path(__file__).resolve().parents[1] / "data" / "vertice_ti.json"
+    senha = os.environ.get("ATENDEIA_SENHA") or None
+    session_secret = os.environ.get("ATENDEIA_SESSION_SECRET") or None
     url = os.environ.get("ATENDEIA_DATABASE_URL")
     if url:
-        return criar_app_de_arquivo(caminho, postgres_url=url)
-    return criar_app_de_arquivo(caminho)
+        return criar_app_de_arquivo(
+            caminho,
+            postgres_url=url,
+            senha=senha,
+            session_secret=session_secret,
+        )
+    return criar_app_de_arquivo(
+        caminho,
+        senha=senha,
+        session_secret=session_secret,
+    )
 
 
 app = _app_de_producao()
