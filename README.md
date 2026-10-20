@@ -1,6 +1,6 @@
 # AtendeIA
 
-API de perguntas de contrato da empresa fictícia Vértice TI. Não há cliente real, banco nem modelo de linguagem.
+API de perguntas de contrato da empresa fictícia Vértice TI. Não há cliente real nem modelo de linguagem.
 
 Quatro peças: a API recebe HTTP, o atendimento liga o classificador à base, o classificador escolhe o tema e a base lê `data/vertice_ti.json`.
 
@@ -22,19 +22,21 @@ py -3 -m venv .venv
 
 ## Subir localmente
 
+O Postgres sobe no Ubuntu, na raiz do projeto, com `docker compose up -d`. A porta no host é 5437. A variável `ATENDEIA_DATABASE_URL` está em `.env.example`.
+
 ```powershell
 .venv\Scripts\python.exe -m uvicorn app.api:app --host 127.0.0.1 --port 8000
 ```
 
 GET http://127.0.0.1:8000/ abre a página da pergunta.
 
-GET http://127.0.0.1:8000/v1/encaminhamentos devolve a lista em memória das perguntas com encaminhar humano verdadeiro. Ela começa vazia e some ao reiniciar o processo.
+GET http://127.0.0.1:8000/v1/encaminhamentos devolve a lista das perguntas com encaminhar humano verdadeiro.
 
 GET http://127.0.0.1:8000/atendente abre a página do atendente.
 
 `DELETE http://127.0.0.1:8000/v1/encaminhamentos/{id}` tira esse item da lista. Id ausente devolve 404.
 
-A lista fica em `data/atendeia.sqlite` e continua depois de reiniciar o processo. Esse arquivo não entra no Git.
+Com `ATENDEIA_DATABASE_URL`, a lista fica no Postgres e continua depois de reiniciar o processo. Sem essa variável, a lista fica só no processo e some ao reiniciar.
 
 `GET http://127.0.0.1:8000/health`
 

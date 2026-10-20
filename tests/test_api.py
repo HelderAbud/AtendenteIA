@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
@@ -206,6 +207,31 @@ def test_dois_apps_no_mesmo_banco_compartilham_a_lista(tmp_path) -> None:
     banco = tmp_path / "fila.sqlite"
     um = TestClient(criar_app_de_arquivo(ARQUIVO, banco))
     outro = TestClient(criar_app_de_arquivo(ARQUIVO, banco))
+    um.post("/v1/perguntas", json={"pergunta": "quero uma proposta"})
+    outro.delete("/v1/encaminhamentos/1")
+    um.post("/v1/perguntas", json={"pergunta": "quero falar sobre o clima"})
+    assert outro.get("/v1/encaminhamentos").json() == [
+        {
+            "id": 2,
+            "pergunta": "quero falar sobre o clima",
+            "fluxo": "desconhecido",
+            "resumo": "Pergunta: quero falar sobre o clima. Motivo: assunto fora da base.",
+        }
+    ]
+
+
+def test_dois_apps_no_mesmo_postgres_compartilham_a_lista() -> None:
+    url = "postgresql://atendeia:atendeia@127.0.0.1:5437/atendeia"
+    try:
+        with psycopg.connect(url) as conexao:
+            conexao.execute("TRUNCATE encaminhamentos RESTART IDENTITY")
+            conexao.commit()
+    except psycopg.OperationalError:
+        pytest.skip("Postgres em 127.0.0.1:5437 indisponível")
+    except psycopg.errors.UndefinedTable:
+        pass
+    um = TestClient(criar_app_de_arquivo(ARQUIVO, postgres_url=url))
+    outro = TestClient(criar_app_de_arquivo(ARQUIVO, postgres_url=url))
     um.post("/v1/perguntas", json={"pergunta": "quero uma proposta"})
     outro.delete("/v1/encaminhamentos/1")
     um.post("/v1/perguntas", json={"pergunta": "quero falar sobre o clima"})
