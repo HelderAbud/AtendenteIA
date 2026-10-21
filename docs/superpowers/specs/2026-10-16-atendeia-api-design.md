@@ -299,3 +299,15 @@ Com os dois valores:
 - Com sessão, o `DELETE` continua `204` sem corpo, e o id ausente continua `404` `{ "erro": "encaminhamento_inexistente" }` sem ler a base.
 
 `GET /`, `POST /v1/perguntas` e `GET /health` não pedem sessão. O `POST` continua com os cinco campos e sem `id`. A página `web/atendente.html` não muda: o navegador manda o cookie na mesma origem. O exemplo JSON de três campos no README permanece.
+
+## Recorte 9
+
+Os recortes 1 a 8 permanecem. O WhatsApp usa o mesmo atendimento, a mesma resposta e a mesma lista. Não há segunda fila, segundo classificador nem modelo de linguagem. Este recorte não envia mensagem para a API da Meta, não guarda telefone e não cria webhook de verificação.
+
+`POST /v1/whatsapp` recebe `{ "texto": "..." }`. O corpo da resposta é o mesmo que `POST /v1/perguntas` devolveria para esse texto: `tema`, `resposta`, `encaminhar_humano`, `fluxo` e `resumo`. O `id` não volta nessa resposta.
+
+Texto vazio, só com espaços, ausente ou de outro tipo responde `422` `{ "erro": "pergunta_invalida" }` e não entra na lista.
+
+Quando a base pede humano, o texto entra na mesma lista, com o próximo `id`. Uma pergunta na rota antiga e um texto no WhatsApp compartilham a fila e a ordem de chegada. A `pergunta` gravada é o texto recebido.
+
+A rota não pede sessão. Com o portão ligado, a lista e o `DELETE` continuam pedindo. `GET /health` continua sem ler a base. As páginas não mudam. O exemplo JSON de três campos no README permanece.
