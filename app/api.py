@@ -26,6 +26,7 @@ class PerguntaIn(BaseModel):
 
 class TextoIn(BaseModel):
     texto: str
+    de: str | None = None
 
     @field_validator("texto")
     @classmethod
@@ -53,6 +54,7 @@ def criar_app(
     atendimento: Atendimento,
     senha: str | None = None,
     session_secret: str | None = None,
+    enviar=None,
 ) -> FastAPI:
     app = FastAPI()
     gate = bool(senha and session_secret)
@@ -80,8 +82,14 @@ def criar_app(
         return atendimento.responder(corpo.pergunta)
 
     @app.post("/v1/whatsapp")
-    def whatsapp(corpo: TextoIn) -> dict:
-        return atendimento.responder(corpo.texto)
+    def whatsapp(corpo: TextoIn):
+        resultado = atendimento.responder(corpo.texto)
+        if enviar is not None and corpo.de is not None and corpo.de.strip():
+            try:
+                enviar(corpo.de.strip(), resultado["resposta"])
+            except Exception:
+                return JSONResponse(status_code=502, content={"erro": "envio_falhou"})
+        return resultado
 
     @app.get("/v1/encaminhamentos")
     def encaminhamentos(request: Request):
@@ -129,12 +137,14 @@ def criar_app_de_arquivo(
     postgres_url: str | None = None,
     senha: str | None = None,
     session_secret: str | None = None,
+    enviar=None,
 ) -> FastAPI:
     base = BaseConhecimento(caminho)
     return criar_app(
         Atendimento(classificar, base, banco, postgres_url),
         senha=senha,
         session_secret=session_secret,
+        enviar=enviar,
     )
 
 

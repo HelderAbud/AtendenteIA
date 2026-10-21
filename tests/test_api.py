@@ -336,3 +336,67 @@ def test_whatsapp_entra_na_mesma_lista() -> None:
             "resumo": "Pergunta: quero falar sobre o clima. Motivo: assunto fora da base.",
         },
     ]
+
+
+def test_whatsapp_envia_a_resposta_para_quem_escreveu() -> None:
+    enviados = []
+    app = criar_app_de_arquivo(
+        ARQUIVO,
+        enviar=lambda destino, texto: enviados.append((destino, texto)),
+    )
+    client = TestClient(app)
+    texto = "quando vence meu contrato?"
+    pergunta = client.post("/v1/perguntas", json={"pergunta": texto})
+    whatsapp = client.post(
+        "/v1/whatsapp",
+        json={"texto": texto, "de": "5511999999999"},
+    )
+    assert whatsapp.status_code == 200
+    assert whatsapp.json() == pergunta.json()
+    assert enviados == [("5511999999999", pergunta.json()["resposta"])]
+    assert "5511999999999" not in str(client.get("/v1/encaminhamentos").json())
+
+
+def test_whatsapp_sem_destino_nao_envia() -> None:
+    enviados = []
+    app = criar_app_de_arquivo(
+        ARQUIVO,
+        enviar=lambda destino, texto: enviados.append((destino, texto)),
+    )
+    client = TestClient(app)
+    texto = "quando vence meu contrato?"
+    pergunta = client.post("/v1/perguntas", json={"pergunta": texto})
+    whatsapp = client.post("/v1/whatsapp", json={"texto": texto})
+    assert whatsapp.json() == pergunta.json()
+    assert enviados == []
+
+
+def test_whatsapp_invalido_nao_envia() -> None:
+    enviados = []
+    app = criar_app_de_arquivo(
+        ARQUIVO,
+        enviar=lambda destino, texto: enviados.append((destino, texto)),
+    )
+    client = TestClient(app)
+    resposta = client.post(
+        "/v1/whatsapp",
+        json={"texto": "   ", "de": "5511999999999"},
+    )
+    assert resposta.status_code == 422
+    assert enviados == []
+    assert client.get("/v1/encaminhamentos").json() == []
+
+
+def test_falha_no_envio_responde_502_e_guarda_o_encaminhamento() -> None:
+    def quebra(destino, texto):
+        raise RuntimeError("meta")
+
+    app = criar_app_de_arquivo(ARQUIVO, enviar=quebra)
+    client = TestClient(app)
+    resposta = client.post(
+        "/v1/whatsapp",
+        json={"texto": "quero uma proposta", "de": "5511999999999"},
+    )
+    assert resposta.status_code == 502
+    assert resposta.json() == {"erro": "envio_falhou"}
+    assert client.get("/v1/encaminhamentos").json()[0]["pergunta"] == "quero uma proposta"
