@@ -40,7 +40,7 @@ Com `ATENDEIA_DATABASE_URL`, a lista fica no Postgres e continua depois de reini
 
 Com `ATENDEIA_SENHA` e `ATENDEIA_SESSION_SECRET`, a página do atendente, a lista e o `DELETE` pedem entrada em `/login`. Sem uma das duas, essas rotas continuam abertas.
 
-`POST /v1/whatsapp` recebe `{ "texto": "..." }` e devolve a mesma resposta de `POST /v1/perguntas`. O encaminhamento entra na mesma lista. Esta rota não envia mensagem para fora.
+`POST /v1/whatsapp` recebe `{ "texto": "..." }` e devolve a mesma resposta de `POST /v1/perguntas`. O encaminhamento entra na mesma lista. Com `de`, `ATENDEIA_WHATSAPP_TOKEN` e `ATENDEIA_WHATSAPP_PHONE_ID`, a mesma `resposta` segue para esse número. Sem um desses valores, a rota só devolve o JSON.
 
 `GET http://127.0.0.1:8000/health`
 

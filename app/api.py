@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from urllib.parse import parse_qs
 
+import httpx
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -131,6 +132,24 @@ def criar_app(
     return app
 
 
+def _criar_enviar_whatsapp(token: str, phone_id: str):
+    def enviar(destino: str, texto: str) -> None:
+        resposta = httpx.post(
+            f"https://graph.facebook.com/v26.0/{phone_id}/messages",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "messaging_product": "whatsapp",
+                "to": destino,
+                "type": "text",
+                "text": {"body": texto},
+            },
+            timeout=10,
+        )
+        resposta.raise_for_status()
+
+    return enviar
+
+
 def criar_app_de_arquivo(
     caminho: Path,
     banco: Path | None = None,
@@ -152,6 +171,11 @@ def _app_de_producao() -> FastAPI:
     caminho = Path(__file__).resolve().parents[1] / "data" / "vertice_ti.json"
     senha = os.environ.get("ATENDEIA_SENHA") or None
     session_secret = os.environ.get("ATENDEIA_SESSION_SECRET") or None
+    token = os.environ.get("ATENDEIA_WHATSAPP_TOKEN") or None
+    phone_id = os.environ.get("ATENDEIA_WHATSAPP_PHONE_ID") or None
+    enviar = (
+        _criar_enviar_whatsapp(token, phone_id) if token and phone_id else None
+    )
     url = os.environ.get("ATENDEIA_DATABASE_URL")
     if url:
         return criar_app_de_arquivo(
@@ -159,11 +183,13 @@ def _app_de_producao() -> FastAPI:
             postgres_url=url,
             senha=senha,
             session_secret=session_secret,
+            enviar=enviar,
         )
     return criar_app_de_arquivo(
         caminho,
         senha=senha,
         session_secret=session_secret,
+        enviar=enviar,
     )
 
 
