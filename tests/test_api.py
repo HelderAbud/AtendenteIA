@@ -400,3 +400,37 @@ def test_falha_no_envio_responde_502_e_guarda_o_encaminhamento() -> None:
     assert resposta.status_code == 502
     assert resposta.json() == {"erro": "envio_falhou"}
     assert client.get("/v1/encaminhamentos").json()[0]["pergunta"] == "quero uma proposta"
+
+
+def test_app_de_producao_envia_pela_cloud_api(monkeypatch) -> None:
+    chamadas = []
+
+    def post(url, headers, json, timeout):
+        chamadas.append((url, headers, json, timeout))
+
+        class Resposta:
+            def raise_for_status(self):
+                return None
+
+        return Resposta()
+
+    monkeypatch.setattr("app.api.httpx.post", post)
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_TOKEN", "token-teste")
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_PHONE_ID", "1099")
+    monkeypatch.delenv("ATENDEIA_DATABASE_URL", raising=False)
+    client = TestClient(_app_de_producao())
+    texto = "quando vence meu contrato?"
+    pergunta = client.post("/v1/perguntas", json={"pergunta": texto})
+    whatsapp = client.post(
+        "/v1/whatsapp",
+        json={"texto": texto, "de": "5511999999999"},
+    )
+    assert whatsapp.json() == pergunta.json()
+    assert chamadas[0][0] == "https://graph.facebook.com/v26.0/1099/messages"
+    assert chamadas[0][1]["Authorization"] == "Bearer token-teste"
+    assert chamadas[0][2] == {
+        "messaging_product": "whatsapp",
+        "to": "5511999999999",
+        "type": "text",
+        "text": {"body": pergunta.json()["resposta"]},
+    }
