@@ -24,6 +24,17 @@ class PerguntaIn(BaseModel):
         return valor
 
 
+class TextoIn(BaseModel):
+    texto: str
+
+    @field_validator("texto")
+    @classmethod
+    def nao_vazia(cls, valor: str) -> str:
+        if not valor.strip():
+            raise ValueError("pergunta_invalida")
+        return valor
+
+
 PAGINA = Path(__file__).resolve().parents[1] / "web" / "index.html"
 ATENDENTE = Path(__file__).resolve().parents[1] / "web" / "atendente.html"
 
@@ -67,6 +78,10 @@ def criar_app(
     @app.post("/v1/perguntas")
     def perguntas(corpo: PerguntaIn) -> dict:
         return atendimento.responder(corpo.pergunta)
+
+    @app.post("/v1/whatsapp")
+    def whatsapp(corpo: TextoIn) -> dict:
+        return atendimento.responder(corpo.texto)
 
     @app.get("/v1/encaminhamentos")
     def encaminhamentos(request: Request):

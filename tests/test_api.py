@@ -294,3 +294,45 @@ def test_app_de_producao_liga_o_portao_com_as_duas_variaveis(monkeypatch) -> Non
     client = TestClient(app, follow_redirects=False)
     assert client.get("/atendente").status_code == 303
     assert client.get("/atendente").headers["location"] == "/login"
+
+
+def test_whatsapp_devolve_a_mesma_resposta_da_pergunta() -> None:
+    client = TestClient(criar_app_de_arquivo(ARQUIVO))
+    texto = "quando vence meu contrato?"
+    pergunta = client.post("/v1/perguntas", json={"pergunta": texto})
+    whatsapp = client.post("/v1/whatsapp", json={"texto": texto})
+    assert whatsapp.status_code == 200
+    assert whatsapp.json() == pergunta.json()
+
+
+@pytest.mark.parametrize(
+    "corpo",
+    [{}, {"texto": None}, {"texto": 10}, {"texto": ""}, {"texto": "   "}],
+)
+def test_whatsapp_invalido_nao_entra_na_lista(corpo: dict) -> None:
+    client = TestClient(criar_app_de_arquivo(ARQUIVO))
+    resposta = client.post("/v1/whatsapp", json=corpo)
+    lista = client.get("/v1/encaminhamentos")
+    assert resposta.status_code == 422
+    assert resposta.json() == {"erro": "pergunta_invalida"}
+    assert lista.json() == []
+
+
+def test_whatsapp_entra_na_mesma_lista() -> None:
+    client = TestClient(criar_app_de_arquivo(ARQUIVO))
+    client.post("/v1/perguntas", json={"pergunta": "quero uma proposta"})
+    client.post("/v1/whatsapp", json={"texto": "quero falar sobre o clima"})
+    assert client.get("/v1/encaminhamentos").json() == [
+        {
+            "id": 1,
+            "pergunta": "quero uma proposta",
+            "fluxo": "venda",
+            "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
+        },
+        {
+            "id": 2,
+            "pergunta": "quero falar sobre o clima",
+            "fluxo": "desconhecido",
+            "resumo": "Pergunta: quero falar sobre o clima. Motivo: assunto fora da base.",
+        },
+    ]
