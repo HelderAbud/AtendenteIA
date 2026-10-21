@@ -311,3 +311,17 @@ Texto vazio, só com espaços, ausente ou de outro tipo responde `422` `{ "erro"
 Quando a base pede humano, o texto entra na mesma lista, com o próximo `id`. Uma pergunta na rota antiga e um texto no WhatsApp compartilham a fila e a ordem de chegada. A `pergunta` gravada é o texto recebido.
 
 A rota não pede sessão. Com o portão ligado, a lista e o `DELETE` continuam pedindo. `GET /health` continua sem ler a base. As páginas não mudam. O exemplo JSON de três campos no README permanece.
+
+## Recorte 10
+
+Os recortes 1 a 9 permanecem. O `POST /v1/whatsapp` passa a poder devolver a mesma `resposta` para quem escreveu. Não há webhook de verificação, modelo de mensagem pronta nem modelo de linguagem. O telefone não entra na lista.
+
+O corpo ganha `de`, opcional. Sem `de`, ou com `de` vazio, a rota continua só devolvendo os cinco campos. Com `de` preenchido e com a função de envio configurada, a API envia o texto da `resposta` para esse destino e ainda devolve os cinco campos, sem `id`.
+
+Texto inválido continua `422` `{ "erro": "pergunta_invalida" }`, não entra na lista e não dispara envio.
+
+Se o envio falha, a resposta HTTP é `502` `{ "erro": "envio_falhou" }`. O encaminhamento que a base já tiver pedido permanece na lista.
+
+No processo, o envio existe quando `ATENDEIA_WHATSAPP_TOKEN` e `ATENDEIA_WHATSAPP_PHONE_ID` vêm preenchidos. Vazio conta como ausente. Faltando um dos dois, não há chamada para fora. A chamada é `POST https://graph.facebook.com/v26.0/{phone_id}/messages`, com o token no cabeçalho `Authorization` e o corpo de texto da Cloud API. O texto enviado é a `resposta`, não o resumo.
+
+A rota continua sem sessão. As páginas e o exemplo JSON de três campos não mudam.
