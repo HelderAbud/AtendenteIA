@@ -660,3 +660,75 @@ def test_webhook_nao_pede_sessao() -> None:
     )
     assert resposta.status_code == 200
     assert client.get("/v1/encaminhamentos").status_code == 401
+
+
+def test_app_de_producao_confirma_o_webhook(monkeypatch) -> None:
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_VERIFY_TOKEN", "verificar-teste")
+    monkeypatch.delenv("ATENDEIA_DATABASE_URL", raising=False)
+    monkeypatch.delenv("ATENDEIA_WHATSAPP_TOKEN", raising=False)
+    monkeypatch.delenv("ATENDEIA_WHATSAPP_PHONE_ID", raising=False)
+    client = TestClient(_app_de_producao())
+    resposta = client.get(
+        "/v1/whatsapp/webhook",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "verificar-teste",
+            "hub.challenge": "123456",
+        },
+    )
+    assert resposta.status_code == 200
+    assert resposta.text == "123456"
+
+
+def _app_de_producao_sem_verificacao(monkeypatch):
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_VERIFY_TOKEN", "")
+    monkeypatch.delenv("ATENDEIA_DATABASE_URL", raising=False)
+    return _app_de_producao()
+
+
+def test_app_de_producao_recebe_o_webhook_e_envia(monkeypatch) -> None:
+    chamadas = []
+
+    def post(url, headers, json, timeout):
+        chamadas.append((url, headers, json, timeout))
+
+        class Resposta:
+            def raise_for_status(self):
+                return None
+
+        return Resposta()
+
+    monkeypatch.setattr("app.api.httpx.post", post)
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_TOKEN", "token-teste")
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_PHONE_ID", "1099")
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_VERIFY_TOKEN", "verificar-teste")
+    monkeypatch.delenv("ATENDEIA_DATABASE_URL", raising=False)
+    client = TestClient(_app_de_producao())
+    texto = "quando vence meu contrato?"
+    pergunta = client.post("/v1/perguntas", json={"pergunta": texto})
+    aviso = client.post(
+        "/v1/whatsapp/webhook",
+        json=_aviso(
+            [
+                {
+                    "from": "5511999999999",
+                    "type": "text",
+                    "text": {"body": texto},
+                }
+            ]
+        ),
+    )
+    assert aviso.status_code == 200
+    assert chamadas[0][0] == "https://graph.facebook.com/v26.0/1099/messages"
+    assert chamadas[0][1]["Authorization"] == "Bearer token-teste"
+    assert chamadas[0][2]["to"] == "5511999999999"
+    assert chamadas[0][2]["text"]["body"] == pergunta.json()["resposta"]
+    vazio = TestClient(_app_de_producao_sem_verificacao(monkeypatch)).get(
+        "/v1/whatsapp/webhook",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "verificar-teste",
+            "hub.challenge": "123456",
+        },
+    )
+    assert vazio.status_code == 403

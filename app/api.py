@@ -238,6 +238,7 @@ def _app_de_producao() -> FastAPI:
     enviar = (
         _criar_enviar_whatsapp(token, phone_id) if token and phone_id else None
     )
+    verificar_token = os.environ.get("ATENDEIA_WHATSAPP_VERIFY_TOKEN") or None
     url = os.environ.get("ATENDEIA_DATABASE_URL")
     if url:
         return criar_app_de_arquivo(
@@ -246,12 +247,14 @@ def _app_de_producao() -> FastAPI:
             senha=senha,
             session_secret=session_secret,
             enviar=enviar,
+            verificar_token=verificar_token,
         )
     return criar_app_de_arquivo(
         caminho,
         senha=senha,
         session_secret=session_secret,
         enviar=enviar,
+        verificar_token=verificar_token,
     )
 
 
