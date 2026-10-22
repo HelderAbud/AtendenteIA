@@ -51,6 +51,31 @@ def _html_login(mostrar_erro: bool = False) -> str:
     )
 
 
+def _texto_do_webhook(aviso: object) -> tuple[str, str] | None:
+    if not isinstance(aviso, dict):
+        return None
+    for entrada in aviso.get("entry") or []:
+        if not isinstance(entrada, dict):
+            continue
+        for mudanca in entrada.get("changes") or []:
+            if not isinstance(mudanca, dict):
+                continue
+            valor = mudanca.get("value")
+            if not isinstance(valor, dict):
+                continue
+            for mensagem in valor.get("messages") or []:
+                if not isinstance(mensagem, dict) or mensagem.get("type") != "text":
+                    continue
+                texto = mensagem.get("text")
+                corpo = texto.get("body") if isinstance(texto, dict) else None
+                if not isinstance(corpo, str) or not corpo.strip():
+                    continue
+                origem = mensagem.get("from")
+                destino = origem.strip() if isinstance(origem, str) else ""
+                return corpo, destino
+    return None
+
+
 def criar_app(
     atendimento: Atendimento,
     senha: str | None = None,
@@ -108,6 +133,24 @@ def criar_app(
         ):
             return Response(content=hub_challenge, media_type="text/plain")
         return JSONResponse(status_code=403, content={"erro": "verificacao_recusada"})
+
+    @app.post("/v1/whatsapp/webhook")
+    async def whatsapp_webhook(request: Request) -> Response:
+        try:
+            aviso = await request.json()
+        except Exception:
+            return Response(status_code=200)
+        achado = _texto_do_webhook(aviso)
+        if achado is None:
+            return Response(status_code=200)
+        texto, destino = achado
+        resultado = atendimento.responder(texto)
+        if enviar is not None and destino:
+            try:
+                enviar(destino, resultado["resposta"])
+            except Exception:
+                return Response(status_code=200)
+        return Response(status_code=200)
 
     @app.get("/v1/encaminhamentos")
     def encaminhamentos(request: Request):

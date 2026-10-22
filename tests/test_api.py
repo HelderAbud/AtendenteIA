@@ -500,3 +500,163 @@ def test_webhook_recusa_challenge_errado() -> None:
         },
     )
     assert ausente.status_code == 403
+
+
+def _aviso(mensagens: list[dict]) -> dict:
+    return {"entry": [{"changes": [{"value": {"messages": mensagens}}]}]}
+
+
+def test_webhook_envia_a_resposta_da_primeira_mensagem() -> None:
+    enviados = []
+    app = criar_app_de_arquivo(
+        ARQUIVO,
+        enviar=lambda destino, texto: enviados.append((destino, texto)),
+    )
+    client = TestClient(app)
+    texto = "quando vence meu contrato?"
+    pergunta = client.post("/v1/perguntas", json={"pergunta": texto})
+    aviso = client.post(
+        "/v1/whatsapp/webhook",
+        json=_aviso(
+            [
+                {
+                    "from": "5511000000000",
+                    "type": "image",
+                    "image": {"id": "1"},
+                },
+                {
+                    "from": "5511999999999",
+                    "type": "text",
+                    "text": {"body": texto},
+                },
+                {
+                    "from": "5511222222222",
+                    "type": "text",
+                    "text": {"body": "quero uma proposta"},
+                },
+            ]
+        ),
+    )
+    assert aviso.status_code == 200
+    assert aviso.content == b""
+    assert enviados == [("5511999999999", pergunta.json()["resposta"])]
+    assert client.get("/v1/encaminhamentos").json() == []
+
+
+def test_webhook_guarda_o_encaminhamento_sem_telefone() -> None:
+    enviados = []
+    app = criar_app_de_arquivo(
+        ARQUIVO,
+        enviar=lambda destino, texto: enviados.append((destino, texto)),
+    )
+    client = TestClient(app)
+    resposta = client.post(
+        "/v1/whatsapp/webhook",
+        json=_aviso(
+            [
+                {
+                    "from": "5511999999999",
+                    "type": "text",
+                    "text": {"body": "quero uma proposta"},
+                }
+            ]
+        ),
+    )
+    assert resposta.status_code == 200
+    assert enviados == [("5511999999999", TEXTOS["desconhecido"])]
+    item = client.get("/v1/encaminhamentos").json()[0]
+    assert item["pergunta"] == "quero uma proposta"
+    assert item["fluxo"] == "venda"
+    assert item["resumo"] == (
+        "Pergunta: quero uma proposta. Motivo: venda sem resposta na base."
+    )
+    assert "5511999999999" not in str(client.get("/v1/encaminhamentos").json())
+
+
+def test_webhook_sem_texto_nao_chama_o_atendimento() -> None:
+    enviados = []
+    app = criar_app(
+        Atendimento(classificar, BaseQueFalha()),
+        enviar=lambda destino, texto: enviados.append((destino, texto)),
+    )
+    client = TestClient(app)
+    status = client.post(
+        "/v1/whatsapp/webhook",
+        json={"entry": [{"changes": [{"value": {"statuses": [{"status": "delivered"}]}}]}]},
+    )
+    branco = client.post(
+        "/v1/whatsapp/webhook",
+        json=_aviso(
+            [{"from": "5511999999999", "type": "text", "text": {"body": "   "}}]
+        ),
+    )
+    invalido = client.post("/v1/whatsapp/webhook", content=b"nao-json")
+    vazio = client.post("/v1/whatsapp/webhook", content=b"")
+    assert status.status_code == 200
+    assert branco.status_code == 200
+    assert invalido.status_code == 200
+    assert vazio.status_code == 200
+    assert status.content == branco.content == invalido.content == vazio.content == b""
+    assert enviados == []
+
+
+def test_webhook_sem_remetente_guarda_e_nao_envia() -> None:
+    enviados = []
+    app = criar_app_de_arquivo(
+        ARQUIVO,
+        enviar=lambda destino, texto: enviados.append((destino, texto)),
+    )
+    client = TestClient(app)
+    resposta = client.post(
+        "/v1/whatsapp/webhook",
+        json=_aviso([{"type": "text", "text": {"body": "quero uma proposta"}}]),
+    )
+    assert resposta.status_code == 200
+    assert enviados == []
+    assert client.get("/v1/encaminhamentos").json()[0]["pergunta"] == "quero uma proposta"
+
+
+def test_webhook_com_falha_no_envio_responde_200_e_guarda() -> None:
+    def falhar(destino: str, texto: str) -> None:
+        raise RuntimeError("meta indisponivel")
+
+    app = criar_app_de_arquivo(ARQUIVO, enviar=falhar)
+    client = TestClient(app)
+    resposta = client.post(
+        "/v1/whatsapp/webhook",
+        json=_aviso(
+            [
+                {
+                    "from": "5511999999999",
+                    "type": "text",
+                    "text": {"body": "quero uma proposta"},
+                }
+            ]
+        ),
+    )
+    assert resposta.status_code == 200
+    assert resposta.content == b""
+    assert client.get("/v1/encaminhamentos").json()[0]["pergunta"] == "quero uma proposta"
+
+
+def test_webhook_nao_pede_sessao() -> None:
+    app = criar_app_de_arquivo(
+        ARQUIVO,
+        senha="segredo",
+        session_secret="assinatura",
+    )
+    client = TestClient(app)
+    resposta = client.post(
+        "/v1/whatsapp/webhook",
+        json=_aviso(
+            [
+                {
+                    "from": "5511999999999",
+                    "type": "text",
+                    "text": {"body": "quero uma proposta"},
+                }
+            ]
+        ),
+    )
+    assert resposta.status_code == 200
+    assert client.get("/v1/encaminhamentos").status_code == 401
