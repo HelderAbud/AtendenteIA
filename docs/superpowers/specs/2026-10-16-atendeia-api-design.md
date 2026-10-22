@@ -325,3 +325,15 @@ Se o envio falha, a resposta HTTP é `502` `{ "erro": "envio_falhou" }`. O encam
 No processo, o envio existe quando `ATENDEIA_WHATSAPP_TOKEN` e `ATENDEIA_WHATSAPP_PHONE_ID` vêm preenchidos. Vazio conta como ausente. Faltando um dos dois, não há chamada para fora. A chamada é `POST https://graph.facebook.com/v26.0/{phone_id}/messages`, com o token no cabeçalho `Authorization` e o corpo de texto da Cloud API. O texto enviado é a `resposta`, não o resumo.
 
 A rota continua sem sessão. As páginas e o exemplo JSON de três campos não mudam.
+
+## Recorte 11
+
+Os recortes 1 a 10 permanecem. A Meta passa a chamar a API. O texto entra no mesmo atendimento e na mesma lista. A `resposta` volta pelo envio que já existe. Não há modelo de mensagem pronta nem modelo de linguagem. O telefone não entra na lista. A assinatura `X-Hub-Signature-256` e o segredo do aplicativo ficam fora: sem esses valores, quem alcançar a URL consegue postar um aviso no formato da Meta.
+
+`POST /v1/whatsapp` não muda. O aviso da Meta usa outro caminho, `GET` e `POST` em `/v1/whatsapp/webhook`. As duas rotas não pedem sessão.
+
+`GET /v1/whatsapp/webhook` confirma a URL. A confirmação só sai quando `verificar_token` vem preenchido, `hub.mode` é `subscribe`, `hub.verify_token` é igual a esse valor e `hub.challenge` tem texto. A resposta é `200`, o corpo é o challenge em texto puro e o atendimento não é chamado. Qualquer outro caso responde `403` `{ "erro": "verificacao_recusada" }`, sem ler a base. No processo, o valor vem de `ATENDEIA_WHATSAPP_VERIFY_TOKEN`. Vazio conta como ausente.
+
+`POST /v1/whatsapp/webhook` lê a primeira mensagem com `type` igual a `text` e com `text.body` preenchido, na ordem do JSON. O corpo segue para o mesmo atendimento. O campo `from`, se vier preenchido, é o destino do envio. A `resposta` enviada é a do atendimento, não o resumo. A rota devolve `200` com corpo vazio, também quando o envio falha. O encaminhamento que a base já tiver pedido permanece. A rota antiga continua respondendo `502` `{ "erro": "envio_falhou" }` na falha de envio.
+
+Aviso sem essa mensagem de texto, texto só com espaços, JSON inválido ou corpo vazio devolve `200` vazio, não chama o atendimento e não envia. Uma segunda mensagem de texto no mesmo aviso não é respondida. `GET /health` continua sem ler a base. As páginas e o exemplo JSON de três campos não mudam.
