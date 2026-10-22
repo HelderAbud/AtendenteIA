@@ -434,3 +434,69 @@ def test_app_de_producao_envia_pela_cloud_api(monkeypatch) -> None:
         "type": "text",
         "text": {"body": pergunta.json()["resposta"]},
     }
+
+
+def test_webhook_devolve_o_challenge() -> None:
+    app = criar_app(
+        Atendimento(classificar, BaseQueFalha()),
+        verificar_token="verificar-teste",
+    )
+    client = TestClient(app)
+    resposta = client.get(
+        "/v1/whatsapp/webhook",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "verificar-teste",
+            "hub.challenge": "123456",
+        },
+    )
+    assert resposta.status_code == 200
+    assert resposta.text == "123456"
+    assert "text/plain" in resposta.headers["content-type"]
+
+
+def test_webhook_recusa_challenge_errado() -> None:
+    app = criar_app(
+        Atendimento(classificar, BaseQueFalha()),
+        verificar_token="verificar-teste",
+    )
+    client = TestClient(app)
+    recusada = client.get(
+        "/v1/whatsapp/webhook",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "outro",
+            "hub.challenge": "123456",
+        },
+    )
+    assert recusada.status_code == 403
+    assert recusada.json() == {"erro": "verificacao_recusada"}
+    sem_token = client.get(
+        "/v1/whatsapp/webhook",
+        params={
+            "hub.mode": "outro",
+            "hub.verify_token": "verificar-teste",
+            "hub.challenge": "123456",
+        },
+    )
+    assert sem_token.status_code == 403
+    vazio = client.get(
+        "/v1/whatsapp/webhook",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "verificar-teste",
+            "hub.challenge": "   ",
+        },
+    )
+    assert vazio.status_code == 403
+    ausente = TestClient(
+        criar_app(Atendimento(classificar, BaseQueFalha()))
+    ).get(
+        "/v1/whatsapp/webhook",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "verificar-teste",
+            "hub.challenge": "123456",
+        },
+    )
+    assert ausente.status_code == 403

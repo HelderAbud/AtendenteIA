@@ -3,7 +3,7 @@ from pathlib import Path
 from urllib.parse import parse_qs
 
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from starlette.requests import Request
@@ -56,6 +56,7 @@ def criar_app(
     senha: str | None = None,
     session_secret: str | None = None,
     enviar=None,
+    verificar_token: str | None = None,
 ) -> FastAPI:
     app = FastAPI()
     gate = bool(senha and session_secret)
@@ -91,6 +92,22 @@ def criar_app(
             except Exception:
                 return JSONResponse(status_code=502, content={"erro": "envio_falhou"})
         return resultado
+
+    @app.get("/v1/whatsapp/webhook")
+    def whatsapp_verificacao(
+        hub_mode: str = Query(default="", alias="hub.mode"),
+        hub_verify_token: str = Query(default="", alias="hub.verify_token"),
+        hub_challenge: str = Query(default="", alias="hub.challenge"),
+    ):
+        token = verificar_token or None
+        if (
+            token
+            and hub_mode == "subscribe"
+            and hub_verify_token == token
+            and hub_challenge.strip()
+        ):
+            return Response(content=hub_challenge, media_type="text/plain")
+        return JSONResponse(status_code=403, content={"erro": "verificacao_recusada"})
 
     @app.get("/v1/encaminhamentos")
     def encaminhamentos(request: Request):
@@ -157,6 +174,7 @@ def criar_app_de_arquivo(
     senha: str | None = None,
     session_secret: str | None = None,
     enviar=None,
+    verificar_token: str | None = None,
 ) -> FastAPI:
     base = BaseConhecimento(caminho)
     return criar_app(
@@ -164,6 +182,7 @@ def criar_app_de_arquivo(
         senha=senha,
         session_secret=session_secret,
         enviar=enviar,
+        verificar_token=verificar_token,
     )
 
 
