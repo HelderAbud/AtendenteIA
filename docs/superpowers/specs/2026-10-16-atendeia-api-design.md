@@ -337,3 +337,15 @@ Os recortes 1 a 10 permanecem. A Meta passa a chamar a API. O texto entra no mes
 `POST /v1/whatsapp/webhook` lê a primeira mensagem com `type` igual a `text` e com `text.body` preenchido, na ordem do JSON. O corpo segue para o mesmo atendimento. O campo `from`, se vier preenchido, é o destino do envio. A `resposta` enviada é a do atendimento, não o resumo. A rota devolve `200` com corpo vazio, também quando o envio falha. O encaminhamento que a base já tiver pedido permanece. A rota antiga continua respondendo `502` `{ "erro": "envio_falhou" }` na falha de envio.
 
 Aviso sem essa mensagem de texto, texto só com espaços, JSON inválido ou corpo vazio devolve `200` vazio, não chama o atendimento e não envia. Uma segunda mensagem de texto no mesmo aviso não é respondida. `GET /health` continua sem ler a base. As páginas e o exemplo JSON de três campos não mudam.
+
+## Recorte 12
+
+Os recortes 1 a 11 permanecem. O `POST /v1/whatsapp/webhook` passa a poder exigir a assinatura da Meta. Não há modelo de mensagem pronta nem modelo de linguagem. O telefone não entra na lista.
+
+O argumento é `app_secret`. No processo, ele vem de `ATENDEIA_WHATSAPP_APP_SECRET`. Vazio conta como ausente. Sem o segredo, o `POST` continua como no recorte 11, inclusive sem o cabeçalho.
+
+Com o segredo preenchido, a conferência acontece no corpo cru, antes de ler o JSON e antes do atendimento. O cabeçalho é `X-Hub-Signature-256`. O valor tem de ser `sha256=` seguido do HMAC-SHA256 desse corpo, em hexadecimal, calculado com o segredo. A comparação não vaza o segredo por diferença de tempo. Assinatura ausente, prefixo errado ou digest errado responde `403` `{ "erro": "assinatura_recusada" }`, não chama o atendimento e não envia.
+
+Com a assinatura certa, vale o recorte 11: a primeira mensagem de texto entra no mesmo atendimento, a `resposta` segue pelo envio que já existe, o telefone não entra na lista e a rota devolve `200` vazio. Corpo vazio ou JSON inválido com assinatura certa continua `200` vazio, sem atendimento. O `GET` do challenge não usa essa assinatura. `POST /v1/whatsapp` não muda e a falha de envio dessa rota continua `502`.
+
+A rota continua sem sessão. As páginas e o exemplo JSON de três campos não mudam.
