@@ -72,4 +72,4 @@ Pergunta ausente, nula, de outro tipo ou em branco devolve `422` com `{ "erro": 
 
 ## Fora deste recorte
 
-WhatsApp, painel, modelo de linguagem, PDF e planilha.
+Modelo de linguagem, PDF, planilha e modelo de mensagem pronta.
