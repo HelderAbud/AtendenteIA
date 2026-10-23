@@ -349,3 +349,9 @@ Com o segredo preenchido, a conferência acontece no corpo cru, antes de ler o J
 Com a assinatura certa, vale o recorte 11: a primeira mensagem de texto entra no mesmo atendimento, a `resposta` segue pelo envio que já existe, o telefone não entra na lista e a rota devolve `200` vazio. Corpo vazio ou JSON inválido com assinatura certa continua `200` vazio, sem atendimento. O `GET` do challenge não usa essa assinatura. `POST /v1/whatsapp` não muda e a falha de envio dessa rota continua `502`.
 
 A rota continua sem sessão. As páginas e o exemplo JSON de três campos não mudam.
+
+## Recorte 13
+
+Os recortes 1 a 12 permanecem. Nenhuma rota, página ou teste muda. O exemplo JSON de três campos no README permanece.
+
+A seção `Fora deste recorte` deixa de citar WhatsApp e painel. A frase passa a ser: modelo de linguagem, PDF, planilha e modelo de mensagem pronta. O título da seção permanece.
