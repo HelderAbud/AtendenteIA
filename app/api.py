@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+import json
 import os
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -76,12 +79,20 @@ def _texto_do_webhook(aviso: object) -> tuple[str, str] | None:
     return None
 
 
+def _assinatura_confere(segredo: str, corpo: bytes, cabecalho: str) -> bool:
+    if not cabecalho.startswith("sha256="):
+        return False
+    digest = hmac.new(segredo.encode(), corpo, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(f"sha256={digest}", cabecalho)
+
+
 def criar_app(
     atendimento: Atendimento,
     senha: str | None = None,
     session_secret: str | None = None,
     enviar=None,
     verificar_token: str | None = None,
+    app_secret: str | None = None,
 ) -> FastAPI:
     app = FastAPI()
     gate = bool(senha and session_secret)
@@ -136,8 +147,16 @@ def criar_app(
 
     @app.post("/v1/whatsapp/webhook")
     async def whatsapp_webhook(request: Request) -> Response:
+        corpo = await request.body()
+        segredo = app_secret or None
+        if segredo is not None:
+            cabecalho = request.headers.get("x-hub-signature-256", "")
+            if not _assinatura_confere(segredo, corpo, cabecalho):
+                return JSONResponse(
+                    status_code=403, content={"erro": "assinatura_recusada"}
+                )
         try:
-            aviso = await request.json()
+            aviso = json.loads(corpo)
         except Exception:
             return Response(status_code=200)
         achado = _texto_do_webhook(aviso)
@@ -218,6 +237,7 @@ def criar_app_de_arquivo(
     session_secret: str | None = None,
     enviar=None,
     verificar_token: str | None = None,
+    app_secret: str | None = None,
 ) -> FastAPI:
     base = BaseConhecimento(caminho)
     return criar_app(
@@ -226,6 +246,7 @@ def criar_app_de_arquivo(
         session_secret=session_secret,
         enviar=enviar,
         verificar_token=verificar_token,
+        app_secret=app_secret,
     )
 
 

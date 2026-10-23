@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 from pathlib import Path
 
@@ -732,3 +734,107 @@ def test_app_de_producao_recebe_o_webhook_e_envia(monkeypatch) -> None:
         },
     )
     assert vazio.status_code == 403
+
+
+def _post_assinado(client: TestClient, segredo: str, aviso: object, cabecalho: str | None = None):
+    corpo = json.dumps(aviso).encode()
+    headers = {"content-type": "application/json"}
+    if cabecalho is None:
+        digest = hmac.new(segredo.encode(), corpo, hashlib.sha256).hexdigest()
+        headers["x-hub-signature-256"] = f"sha256={digest}"
+    elif cabecalho:
+        headers["x-hub-signature-256"] = cabecalho
+    return client.post("/v1/whatsapp/webhook", content=corpo, headers=headers)
+
+
+def test_webhook_recusa_assinatura_errada() -> None:
+    enviados = []
+    app = criar_app(
+        Atendimento(classificar, BaseQueFalha()),
+        verificar_token="verificar-teste",
+        app_secret="segredo-teste",
+        enviar=lambda destino, texto: enviados.append((destino, texto)),
+    )
+    client = TestClient(app)
+    aviso = _aviso(
+        [{"from": "5511999999999", "type": "text", "text": {"body": "quero uma proposta"}}]
+    )
+    challenge = client.get(
+        "/v1/whatsapp/webhook",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "verificar-teste",
+            "hub.challenge": "123456",
+        },
+    )
+    assert challenge.status_code == 200
+    assert challenge.text == "123456"
+    ausente = _post_assinado(client, "segredo-teste", aviso, cabecalho="")
+    errada = _post_assinado(client, "segredo-teste", aviso, cabecalho="sha256=" + ("0" * 64))
+    sem_prefixo = _post_assinado(
+        client,
+        "segredo-teste",
+        aviso,
+        cabecalho=hmac.new(
+            b"segredo-teste", json.dumps(aviso).encode(), hashlib.sha256
+        ).hexdigest(),
+    )
+    outro_corpo = _post_assinado(
+        client,
+        "segredo-teste",
+        aviso,
+        cabecalho="sha256="
+        + hmac.new(b"segredo-teste", b'{"a":1}', hashlib.sha256).hexdigest(),
+    )
+    assert (
+        ausente.status_code
+        == errada.status_code
+        == sem_prefixo.status_code
+        == outro_corpo.status_code
+        == 403
+    )
+    assert ausente.json() == {"erro": "assinatura_recusada"}
+    assert enviados == []
+
+
+def test_webhook_com_assinatura_certa_envia_e_nao_grava_telefone() -> None:
+    enviados = []
+    app = criar_app_de_arquivo(
+        ARQUIVO,
+        app_secret="segredo-teste",
+        enviar=lambda destino, texto: enviados.append((destino, texto)),
+    )
+    client = TestClient(app)
+    aviso = _aviso(
+        [{"from": "5511999999999", "type": "text", "text": {"body": "quero uma proposta"}}]
+    )
+    resposta = _post_assinado(client, "segredo-teste", aviso)
+    assert resposta.status_code == 200
+    assert resposta.content == b""
+    assert enviados == [("5511999999999", TEXTOS["desconhecido"])]
+    item = client.get("/v1/encaminhamentos").json()[0]
+    assert item["pergunta"] == "quero uma proposta"
+    assert "5511999999999" not in str(client.get("/v1/encaminhamentos").json())
+    invalido = client.post(
+        "/v1/whatsapp/webhook",
+        content=b"nao-json",
+        headers={
+            "content-type": "application/json",
+            "x-hub-signature-256": "sha256="
+            + hmac.new(b"segredo-teste", b"nao-json", hashlib.sha256).hexdigest(),
+        },
+    )
+    assert invalido.status_code == 200
+    assert invalido.content == b""
+    vazio = client.post(
+        "/v1/whatsapp/webhook",
+        content=b"",
+        headers={
+            "content-type": "application/json",
+            "x-hub-signature-256": "sha256="
+            + hmac.new(b"segredo-teste", b"", hashlib.sha256).hexdigest(),
+        },
+    )
+    assert vazio.status_code == 200
+    assert vazio.content == b""
+    assert len(client.get("/v1/encaminhamentos").json()) == 1
