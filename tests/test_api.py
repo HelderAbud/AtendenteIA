@@ -838,3 +838,65 @@ def test_webhook_com_assinatura_certa_envia_e_nao_grava_telefone() -> None:
     assert vazio.status_code == 200
     assert vazio.content == b""
     assert len(client.get("/v1/encaminhamentos").json()) == 1
+
+
+def test_app_de_producao_exige_a_assinatura(monkeypatch) -> None:
+    chamadas = []
+
+    def post(url, headers, json, timeout):
+        chamadas.append((url, headers, json, timeout))
+
+        class Resposta:
+            def raise_for_status(self):
+                return None
+
+        return Resposta()
+
+    monkeypatch.setattr("app.api.httpx.post", post)
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_TOKEN", "token-teste")
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_PHONE_ID", "1099")
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_APP_SECRET", "segredo-teste")
+    monkeypatch.delenv("ATENDEIA_DATABASE_URL", raising=False)
+    client = TestClient(_app_de_producao())
+    aviso = _aviso(
+        [
+            {
+                "from": "5511999999999",
+                "type": "text",
+                "text": {"body": "quando vence meu contrato?"},
+            }
+        ]
+    )
+    cru = json.dumps(aviso).encode()
+    recusado = client.post(
+        "/v1/whatsapp/webhook",
+        content=cru,
+        headers={"content-type": "application/json"},
+    )
+    assert recusado.status_code == 403
+    assert recusado.json() == {"erro": "assinatura_recusada"}
+    assert chamadas == []
+    digest = hmac.new(b"segredo-teste", cru, hashlib.sha256).hexdigest()
+    aceite = client.post(
+        "/v1/whatsapp/webhook",
+        content=cru,
+        headers={
+            "content-type": "application/json",
+            "x-hub-signature-256": f"sha256={digest}",
+        },
+    )
+    assert aceite.status_code == 200
+    assert chamadas[0][2]["to"] == "5511999999999"
+    pergunta = client.post(
+        "/v1/perguntas", json={"pergunta": "quando vence meu contrato?"}
+    )
+    assert chamadas[0][2]["text"]["body"] == pergunta.json()["resposta"]
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_APP_SECRET", "")
+    aberto = TestClient(_app_de_producao())
+    sem_assinatura = aberto.post(
+        "/v1/whatsapp/webhook",
+        content=cru,
+        headers={"content-type": "application/json"},
+    )
+    assert sem_assinatura.status_code == 200
+    assert len(chamadas) == 2
