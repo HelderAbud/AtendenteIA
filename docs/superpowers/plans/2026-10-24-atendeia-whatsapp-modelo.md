@@ -168,7 +168,7 @@ git commit -m "feat: send whatsapp replies with a message template"
 - Consumes: `_criar_enviar_whatsapp(..., modelo=None)`
 - Produces: `_app_de_producao` lê `ATENDEIA_WHATSAPP_TEMPLATE`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Acrescentar em `tests/test_api.py`:
 
@@ -202,15 +202,15 @@ def test_app_de_producao_envia_pelo_modelo(monkeypatch) -> None:
     assert chamadas[1][2]["text"]["body"] == pergunta.json()["resposta"]
 ```
 
-Não exportar `ATENDEIA_DATABASE_URL`. Não chamar a Graph API real.
+Não exportar `ATENDEIA_DATABASE_URL`. Não chamar a Graph API real. A prova usa o webhook, porque `POST /v1/whatsapp` não envia.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `.venv\Scripts\python.exe -m pytest tests/test_api.py::test_app_de_producao_envia_pelo_modelo -v`
 
 Expected: FAIL because `chamadas[0][2]["type"]` ainda é `text`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `_app_de_producao` lê `ATENDEIA_WHATSAPP_TEMPLATE`. String vazia vira ausência. Passar `modelo` para `_criar_enviar_whatsapp` só quando o token e o identificador do número também existem.
 
@@ -232,7 +232,7 @@ Modelo de linguagem, PDF e planilha.
 
 Não colocar nome de modelo de exemplo. Não alterar o exemplo JSON de três campos. Não alterar as páginas.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `.venv\Scripts\python.exe -m pytest -q`
 

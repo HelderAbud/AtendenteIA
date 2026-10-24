@@ -289,8 +289,11 @@ def _app_de_producao() -> FastAPI:
     session_secret = os.environ.get("ATENDEIA_SESSION_SECRET") or None
     token = os.environ.get("ATENDEIA_WHATSAPP_TOKEN") or None
     phone_id = os.environ.get("ATENDEIA_WHATSAPP_PHONE_ID") or None
+    modelo = os.environ.get("ATENDEIA_WHATSAPP_TEMPLATE") or None
     enviar = (
-        _criar_enviar_whatsapp(token, phone_id) if token and phone_id else None
+        _criar_enviar_whatsapp(token, phone_id, modelo=modelo)
+        if token and phone_id
+        else None
     )
     verificar_token = os.environ.get("ATENDEIA_WHATSAPP_VERIFY_TOKEN") or None
     app_secret = os.environ.get("ATENDEIA_WHATSAPP_APP_SECRET") or None
