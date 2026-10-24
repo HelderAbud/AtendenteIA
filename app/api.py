@@ -225,17 +225,36 @@ def criar_app(
     return app
 
 
-def _criar_enviar_whatsapp(token: str, phone_id: str):
+def _criar_enviar_whatsapp(token: str, phone_id: str, modelo: str | None = None):
     def enviar(destino: str, texto: str) -> None:
-        resposta = httpx.post(
-            f"https://graph.facebook.com/v26.0/{phone_id}/messages",
-            headers={"Authorization": f"Bearer {token}"},
-            json={
+        nome = modelo or None
+        if nome:
+            corpo = {
+                "messaging_product": "whatsapp",
+                "to": destino,
+                "type": "template",
+                "template": {
+                    "name": nome,
+                    "language": {"code": "pt_BR"},
+                    "components": [
+                        {
+                            "type": "body",
+                            "parameters": [{"type": "text", "text": texto}],
+                        }
+                    ],
+                },
+            }
+        else:
+            corpo = {
                 "messaging_product": "whatsapp",
                 "to": destino,
                 "type": "text",
                 "text": {"body": texto},
-            },
+            }
+        resposta = httpx.post(
+            f"https://graph.facebook.com/v26.0/{phone_id}/messages",
+            headers={"Authorization": f"Bearer {token}"},
+            json=corpo,
             timeout=10,
         )
         resposta.raise_for_status()
