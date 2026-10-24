@@ -538,6 +538,60 @@ def test_envio_sem_modelo_continua_texto_livre(monkeypatch) -> None:
     assert chamadas[1][2]["type"] == "text"
 
 
+def test_app_de_producao_envia_pelo_modelo(monkeypatch) -> None:
+    chamadas = []
+    monkeypatch.setattr("app.api.httpx.post", _post_falso(chamadas))
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_TOKEN", "token-teste")
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_PHONE_ID", "1099")
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_TEMPLATE", "aviso_contrato")
+    monkeypatch.delenv("ATENDEIA_DATABASE_URL", raising=False)
+    client = TestClient(_app_de_producao())
+    texto = "quando vence meu contrato?"
+    pergunta = client.post("/v1/perguntas", json={"pergunta": texto})
+    aberto = client.post(
+        "/v1/whatsapp",
+        json={"texto": texto, "de": "5511999999999"},
+    )
+    assert aberto.json() == pergunta.json()
+    assert chamadas == []
+    whatsapp = client.post(
+        "/v1/whatsapp/webhook",
+        json=_aviso(
+            [
+                {
+                    "from": "5511999999999",
+                    "type": "text",
+                    "text": {"body": texto},
+                }
+            ]
+        ),
+    )
+    assert whatsapp.status_code == 200
+    assert chamadas[0][2]["type"] == "template"
+    assert chamadas[0][2]["template"]["name"] == "aviso_contrato"
+    assert chamadas[0][2]["template"]["language"] == {"code": "pt_BR"}
+    assert chamadas[0][2]["template"]["components"][0]["parameters"] == [
+        {"type": "text", "text": pergunta.json()["resposta"]}
+    ]
+    assert "5511999999999" not in str(client.get("/v1/encaminhamentos").json())
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_TEMPLATE", "")
+    livre = TestClient(_app_de_producao())
+    livre.post(
+        "/v1/whatsapp/webhook",
+        json=_aviso(
+            [
+                {
+                    "from": "5511888888888",
+                    "type": "text",
+                    "text": {"body": texto},
+                }
+            ]
+        ),
+    )
+    assert chamadas[1][2]["type"] == "text"
+    assert chamadas[1][2]["text"]["body"] == pergunta.json()["resposta"]
+
+
 def test_webhook_devolve_o_challenge() -> None:
     app = criar_app(
         Atendimento(classificar, BaseQueFalha()),

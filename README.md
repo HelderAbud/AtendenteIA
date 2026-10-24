@@ -46,6 +46,8 @@ Com `ATENDEIA_SENHA` e `ATENDEIA_SESSION_SECRET`, a página do atendente, a list
 
 Com `ATENDEIA_WHATSAPP_APP_SECRET`, o `POST /v1/whatsapp/webhook` só segue quando `X-Hub-Signature-256` é `sha256=` mais o HMAC-SHA256 do corpo cru. Assinatura ausente ou errada responde `403` com `{ "erro": "assinatura_recusada" }` e não chama o atendimento. Sem o segredo, o `POST` continua como está.
 
+Com `ATENDEIA_WHATSAPP_TEMPLATE`, a mesma `resposta` segue como parâmetro desse modelo, em `pt_BR`. Sem essa variável, o envio continua em texto livre.
+
 `GET http://127.0.0.1:8000/health`
 
 ```json
@@ -72,4 +74,4 @@ Pergunta ausente, nula, de outro tipo, em branco ou com mais de 500 caracteres d
 
 ## Fora deste recorte
 
-Modelo de linguagem, PDF, planilha e modelo de mensagem pronta.
+Modelo de linguagem, PDF e planilha.
