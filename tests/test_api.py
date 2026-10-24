@@ -7,7 +7,7 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api import _app_de_producao, criar_app, criar_app_de_arquivo
+from app.api import _app_de_producao, _criar_enviar_whatsapp, criar_app, criar_app_de_arquivo
 from app.atendimento import Atendimento
 from app.classificador import classificar
 
@@ -484,6 +484,58 @@ def test_app_de_producao_envia_pela_cloud_api(monkeypatch) -> None:
         "type": "text",
         "text": {"body": pergunta.json()["resposta"]},
     }
+
+
+def _post_falso(chamadas):
+    def post(url, headers, json, timeout):
+        chamadas.append((url, headers, json, timeout))
+
+        class Resposta:
+            def raise_for_status(self):
+                return None
+
+        return Resposta()
+
+    return post
+
+
+def test_envio_com_modelo_manda_a_resposta_no_parametro(monkeypatch) -> None:
+    chamadas = []
+    monkeypatch.setattr("app.api.httpx.post", _post_falso(chamadas))
+    enviar = _criar_enviar_whatsapp("token-teste", "1099", modelo="aviso_contrato")
+    enviar("5511999999999", "O contrato vale 12 meses.")
+    assert chamadas[0][0] == "https://graph.facebook.com/v26.0/1099/messages"
+    assert chamadas[0][1]["Authorization"] == "Bearer token-teste"
+    assert chamadas[0][3] == 10
+    assert chamadas[0][2] == {
+        "messaging_product": "whatsapp",
+        "to": "5511999999999",
+        "type": "template",
+        "template": {
+            "name": "aviso_contrato",
+            "language": {"code": "pt_BR"},
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": "O contrato vale 12 meses."}
+                    ],
+                }
+            ],
+        },
+    }
+
+
+def test_envio_sem_modelo_continua_texto_livre(monkeypatch) -> None:
+    chamadas = []
+    monkeypatch.setattr("app.api.httpx.post", _post_falso(chamadas))
+    livre = _criar_enviar_whatsapp("token-teste", "1099")
+    livre("5511999999999", "texto livre")
+    vazio = _criar_enviar_whatsapp("token-teste", "1099", modelo="")
+    vazio("5511999999999", "texto livre")
+    assert chamadas[0][2]["type"] == "text"
+    assert chamadas[0][2]["text"] == {"body": "texto livre"}
+    assert chamadas[1][2]["type"] == "text"
 
 
 def test_webhook_devolve_o_challenge() -> None:
