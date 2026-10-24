@@ -1,4 +1,4 @@
-from app.classificador import normalizar
+from app.classificador import tem_sinal
 
 SINAIS_VENDA = ("contratar", "proposta", "orcamento", "licenca", "fechar")
 TEMAS_SUPORTE = ("prazo", "sla", "renovacao", "boleto", "chamado")
@@ -7,8 +7,7 @@ TEMAS_SUPORTE = ("prazo", "sla", "renovacao", "boleto", "chamado")
 def decidir_fluxo(tema: str, pergunta: str) -> str:
     if tema in TEMAS_SUPORTE:
         return "suporte"
-    normalizado = normalizar(pergunta)
-    if any(sinal in normalizado for sinal in SINAIS_VENDA):
+    if any(tem_sinal(sinal, pergunta) for sinal in SINAIS_VENDA):
         return "venda"
     return "desconhecido"
 

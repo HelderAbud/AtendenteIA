@@ -1,3 +1,4 @@
+import re
 import unicodedata
 
 SINAIS: dict[str, tuple[str, ...]] = {
@@ -7,6 +8,27 @@ SINAIS: dict[str, tuple[str, ...]] = {
     "boleto": ("boleto", "segunda via", "pagar", "pagamento"),
     "chamado": ("chamado", "ticket", "status", "andamento"),
 }
+
+_SUFIXOS = frozenset(
+    {
+        "",
+        "r",
+        "er",
+        "ar",
+        "ir",
+        "mento",
+        "imento",
+        "cao",
+        "coes",
+        "s",
+        "es",
+        "ndo",
+        "da",
+        "do",
+        "dos",
+        "das",
+    }
+)
 
 
 def normalizar(texto: str) -> str:
@@ -18,10 +40,28 @@ def normalizar(texto: str) -> str:
     return " ".join(sem_acento.split())
 
 
+def _palavras(texto: str) -> list[str]:
+    return re.findall(r"[a-z]+", normalizar(texto))
+
+
+def tem_sinal(sinal: str, texto: str) -> bool:
+    tokens = _palavras(texto)
+    partes = sinal.split()
+    if len(partes) > 1:
+        tamanho = len(partes)
+        return any(
+            tokens[indice : indice + tamanho] == partes
+            for indice in range(len(tokens) - tamanho + 1)
+        )
+    raiz = partes[0]
+    return any(
+        token.startswith(raiz) and token[len(raiz) :] in _SUFIXOS for token in tokens
+    )
+
+
 def classificar(texto: str) -> str:
-    normalizado = normalizar(texto)
     pontuacao = {
-        tema: sum(1 for sinal in sinais if sinal in normalizado)
+        tema: sum(1 for sinal in sinais if tem_sinal(sinal, texto))
         for tema, sinais in SINAIS.items()
     }
     maior = max(pontuacao.values())

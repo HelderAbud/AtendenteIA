@@ -14,6 +14,10 @@ from app.classificador import classificar
         ("qual o status do chamado?", "chamado"),
         ("quero falar sobre o clima", "desconhecido"),
         ("vence o boleto", "desconhecido"),
+        ("apagar o arquivo", "desconhecido"),
+        ("terminal do servidor", "desconhecido"),
+        ("preciso determinar o assunto", "desconhecido"),
+        ("qual o vencimento?", "prazo"),
     ],
 )
 def test_exemplos_fechados(pergunta: str, tema: str) -> None:

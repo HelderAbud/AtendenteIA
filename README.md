@@ -40,7 +40,7 @@ Com `ATENDEIA_DATABASE_URL`, a lista fica no Postgres e continua depois de reini
 
 Com `ATENDEIA_SENHA` e `ATENDEIA_SESSION_SECRET`, a página do atendente, a lista e o `DELETE` pedem entrada em `/login`. Sem uma das duas, essas rotas continuam abertas.
 
-`POST /v1/whatsapp` recebe `{ "texto": "..." }` e devolve a mesma resposta de `POST /v1/perguntas`. O encaminhamento entra na mesma lista. Com `de`, `ATENDEIA_WHATSAPP_TOKEN` e `ATENDEIA_WHATSAPP_PHONE_ID`, a mesma `resposta` segue para esse número. Sem um desses valores, a rota só devolve o JSON.
+`POST /v1/whatsapp` recebe `{ "texto": "..." }` e devolve a mesma resposta de `POST /v1/perguntas`. O encaminhamento entra na mesma lista. Esta rota não envia mensagem. O envio sai só do webhook, com `ATENDEIA_WHATSAPP_TOKEN` e `ATENDEIA_WHATSAPP_PHONE_ID`.
 
 `GET /v1/whatsapp/webhook` confirma a Meta quando `hub.mode` é `subscribe` e `hub.verify_token` é igual a `ATENDEIA_WHATSAPP_VERIFY_TOKEN`. A resposta é o `hub.challenge` em texto. `POST` nessa mesma rota lê a primeira mensagem de texto do aviso, usa o mesmo atendimento e devolve `200` vazio. O número segue no envio e não entra na lista. Sem o token de verificação, o `GET` responde `403`.
 
@@ -68,7 +68,7 @@ Resposta `200`:
 }
 ```
 
-Pergunta ausente, nula, de outro tipo ou em branco devolve `422` com `{ "erro": "pergunta_invalida" }`. Tema desconhecido devolve `200` com `encaminhar_humano` verdadeiro.
+Pergunta ausente, nula, de outro tipo, em branco ou com mais de 500 caracteres devolve `422` com `{ "erro": "pergunta_invalida" }`. Tema desconhecido devolve `200` com `encaminhar_humano` verdadeiro.
 
 ## Fora deste recorte
 
