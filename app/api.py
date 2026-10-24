@@ -1,6 +1,8 @@
+import asyncio
 import hashlib
 import hmac
 import json
+import logging
 import os
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -16,6 +18,10 @@ from app.atendimento import Atendimento
 from app.base import BaseConhecimento
 from app.classificador import classificar
 
+logger = logging.getLogger("atendeia")
+LIMITE_TEXTO = 500
+LIMITE_FALHAS = 5
+
 
 class PerguntaIn(BaseModel):
     pergunta: str
@@ -23,7 +29,7 @@ class PerguntaIn(BaseModel):
     @field_validator("pergunta")
     @classmethod
     def nao_vazia(cls, valor: str) -> str:
-        if not valor.strip():
+        if not valor.strip() or len(valor) > LIMITE_TEXTO:
             raise ValueError("pergunta_invalida")
         return valor
 
@@ -35,7 +41,7 @@ class TextoIn(BaseModel):
     @field_validator("texto")
     @classmethod
     def nao_vazia(cls, valor: str) -> str:
-        if not valor.strip():
+        if not valor.strip() or len(valor) > LIMITE_TEXTO:
             raise ValueError("pergunta_invalida")
         return valor
 
@@ -99,7 +105,12 @@ def criar_app(
 
     @app.exception_handler(RequestValidationError)
     async def pergunta_invalida(request, exc: RequestValidationError):
-        return JSONResponse(status_code=422, content={"erro": "pergunta_invalida"})
+        for erro in exc.errors():
+            if "pergunta" in erro.get("loc", ()) or "texto" in erro.get("loc", ()):
+                return JSONResponse(
+                    status_code=422, content={"erro": "pergunta_invalida"}
+                )
+        return JSONResponse(status_code=422, content={"erro": "requisicao_invalida"})
 
     @app.get("/", response_class=HTMLResponse)
     def pagina() -> str:
@@ -121,13 +132,7 @@ def criar_app(
 
     @app.post("/v1/whatsapp")
     def whatsapp(corpo: TextoIn):
-        resultado = atendimento.responder(corpo.texto)
-        if enviar is not None and corpo.de is not None and corpo.de.strip():
-            try:
-                enviar(corpo.de.strip(), resultado["resposta"])
-            except Exception:
-                return JSONResponse(status_code=502, content={"erro": "envio_falhou"})
-        return resultado
+        return atendimento.responder(corpo.texto)
 
     @app.get("/v1/whatsapp/webhook")
     def whatsapp_verificacao(
@@ -163,11 +168,14 @@ def criar_app(
         if achado is None:
             return Response(status_code=200)
         texto, destino = achado
-        resultado = atendimento.responder(texto)
+        if len(texto) > LIMITE_TEXTO:
+            return Response(status_code=200)
+        resultado = await asyncio.to_thread(atendimento.responder, texto)
         if enviar is not None and destino:
             try:
-                enviar(destino, resultado["resposta"])
+                await asyncio.to_thread(enviar, destino, resultado["resposta"])
             except Exception:
+                logger.warning("falha ao enviar a resposta do webhook")
                 return Response(status_code=200)
         return Response(status_code=200)
 
@@ -193,6 +201,7 @@ def criar_app(
         from starlette.middleware.sessions import SessionMiddleware
 
         app.add_middleware(SessionMiddleware, secret_key=session_secret)
+        falhas: dict[str, int] = {}
 
         @app.get("/login", response_class=HTMLResponse)
         def login_formulario() -> str:
@@ -200,12 +209,17 @@ def criar_app(
 
         @app.post("/login")
         async def login_enviar(request: Request):
+            origem = request.client.host if request.client else ""
+            if falhas.get(origem, 0) >= LIMITE_FALHAS:
+                return HTMLResponse("<p>Muitas tentativas.</p>", status_code=429)
             corpo = await request.body()
             valores = parse_qs(corpo.decode())
             tentativa = valores.get("senha", [""])[0]
-            if tentativa == senha:
+            if hmac.compare_digest(tentativa.encode(), senha.encode()):
+                falhas[origem] = 0
                 request.session["atendente"] = True
                 return RedirectResponse("/atendente", status_code=303)
+            falhas[origem] = falhas.get(origem, 0) + 1
             return HTMLResponse(_html_login(mostrar_erro=True), status_code=401)
 
     return app
@@ -261,6 +275,14 @@ def _app_de_producao() -> FastAPI:
     )
     verificar_token = os.environ.get("ATENDEIA_WHATSAPP_VERIFY_TOKEN") or None
     app_secret = os.environ.get("ATENDEIA_WHATSAPP_APP_SECRET") or None
+    if not (senha and session_secret):
+        logger.warning(
+            "painel e fila abertos: faltam ATENDEIA_SENHA ou ATENDEIA_SESSION_SECRET"
+        )
+    if token and phone_id and not app_secret:
+        logger.warning(
+            "webhook sem assinatura: falta ATENDEIA_WHATSAPP_APP_SECRET"
+        )
     url = os.environ.get("ATENDEIA_DATABASE_URL")
     if url:
         return criar_app_de_arquivo(

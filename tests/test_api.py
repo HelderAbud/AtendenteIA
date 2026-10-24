@@ -79,6 +79,25 @@ def test_pergunta_invalida(corpo: dict) -> None:
     assert resposta.json() == {"erro": "pergunta_invalida"}
 
 
+def test_pergunta_longa_nao_entra_na_lista() -> None:
+    client = TestClient(criar_app_de_arquivo(ARQUIVO))
+    longa = "a" * 501
+    resposta = client.post("/v1/perguntas", json={"pergunta": longa})
+    whatsapp = client.post("/v1/whatsapp", json={"texto": longa})
+    assert resposta.status_code == 422
+    assert resposta.json() == {"erro": "pergunta_invalida"}
+    assert whatsapp.status_code == 422
+    assert whatsapp.json() == {"erro": "pergunta_invalida"}
+    assert client.get("/v1/encaminhamentos").json() == []
+
+
+def test_delete_com_id_texto_nao_diz_pergunta_invalida() -> None:
+    client = TestClient(criar_app_de_arquivo(ARQUIVO))
+    resposta = client.delete("/v1/encaminhamentos/abc")
+    assert resposta.status_code == 422
+    assert resposta.json() == {"erro": "requisicao_invalida"}
+
+
 def test_arquivo_ausente_impede_a_subida(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         criar_app_de_arquivo(tmp_path / "ausente.json")
@@ -268,6 +287,22 @@ def test_senha_certa_abre_sessao_e_senha_errada_nao() -> None:
     assert client.get("/atendente").status_code == 200
 
 
+def test_login_bloqueia_depois_de_cinco_erros() -> None:
+    app = criar_app(
+        Atendimento(classificar, BaseQueFalha()),
+        senha="senha-teste",
+        session_secret="segredo-teste",
+    )
+    client = TestClient(app, follow_redirects=False)
+    for _ in range(5):
+        recusada = client.post("/login", data={"senha": "outra"})
+        assert recusada.status_code == 401
+    bloqueada = client.post("/login", data={"senha": "senha-teste"})
+    assert bloqueada.status_code == 429
+    assert "Muitas tentativas." in bloqueada.text
+    assert client.get("/atendente").status_code == 303
+
+
 def test_lista_e_delete_sem_sessao_nao_mexem_na_fila() -> None:
     app = criar_app_de_arquivo(
         ARQUIVO,
@@ -353,9 +388,8 @@ def test_whatsapp_envia_a_resposta_para_quem_escreveu() -> None:
         "/v1/whatsapp",
         json={"texto": texto, "de": "5511999999999"},
     )
-    assert whatsapp.status_code == 200
     assert whatsapp.json() == pergunta.json()
-    assert enviados == [("5511999999999", pergunta.json()["resposta"])]
+    assert enviados == []
     assert "5511999999999" not in str(client.get("/v1/encaminhamentos").json())
 
 
@@ -389,7 +423,7 @@ def test_whatsapp_invalido_nao_envia() -> None:
     assert client.get("/v1/encaminhamentos").json() == []
 
 
-def test_falha_no_envio_responde_502_e_guarda_o_encaminhamento() -> None:
+def test_rota_publica_nao_envia_mesmo_se_o_envio_falha() -> None:
     def quebra(destino, texto):
         raise RuntimeError("meta")
 
@@ -399,8 +433,8 @@ def test_falha_no_envio_responde_502_e_guarda_o_encaminhamento() -> None:
         "/v1/whatsapp",
         json={"texto": "quero uma proposta", "de": "5511999999999"},
     )
-    assert resposta.status_code == 502
-    assert resposta.json() == {"erro": "envio_falhou"}
+    assert resposta.status_code == 200
+    assert resposta.json()["fluxo"] == "venda"
     assert client.get("/v1/encaminhamentos").json()[0]["pergunta"] == "quero uma proposta"
 
 
@@ -423,11 +457,25 @@ def test_app_de_producao_envia_pela_cloud_api(monkeypatch) -> None:
     client = TestClient(_app_de_producao())
     texto = "quando vence meu contrato?"
     pergunta = client.post("/v1/perguntas", json={"pergunta": texto})
-    whatsapp = client.post(
+    aberto = client.post(
         "/v1/whatsapp",
         json={"texto": texto, "de": "5511999999999"},
     )
-    assert whatsapp.json() == pergunta.json()
+    assert aberto.json() == pergunta.json()
+    assert chamadas == []
+    whatsapp = client.post(
+        "/v1/whatsapp/webhook",
+        json=_aviso(
+            [
+                {
+                    "from": "5511999999999",
+                    "type": "text",
+                    "text": {"body": texto},
+                }
+            ]
+        ),
+    )
+    assert whatsapp.status_code == 200
     assert chamadas[0][0] == "https://graph.facebook.com/v26.0/1099/messages"
     assert chamadas[0][1]["Authorization"] == "Bearer token-teste"
     assert chamadas[0][2] == {
@@ -594,12 +642,70 @@ def test_webhook_sem_texto_nao_chama_o_atendimento() -> None:
     )
     invalido = client.post("/v1/whatsapp/webhook", content=b"nao-json")
     vazio = client.post("/v1/whatsapp/webhook", content=b"")
+    longo = client.post(
+        "/v1/whatsapp/webhook",
+        json=_aviso(
+            [
+                {
+                    "from": "5511999999999",
+                    "type": "text",
+                    "text": {"body": "a" * 501},
+                }
+            ]
+        ),
+    )
     assert status.status_code == 200
     assert branco.status_code == 200
     assert invalido.status_code == 200
     assert vazio.status_code == 200
-    assert status.content == branco.content == invalido.content == vazio.content == b""
+    assert longo.status_code == 200
+    assert (
+        status.content
+        == branco.content
+        == invalido.content
+        == vazio.content
+        == longo.content
+        == b""
+    )
     assert enviados == []
+
+
+def test_falha_no_envio_do_webhook_fica_no_log(caplog) -> None:
+    def quebra(destino, texto):
+        raise RuntimeError("meta")
+
+    app = criar_app_de_arquivo(ARQUIVO, enviar=quebra)
+    client = TestClient(app)
+    with caplog.at_level("WARNING", logger="atendeia"):
+        resposta = client.post(
+            "/v1/whatsapp/webhook",
+            json=_aviso(
+                [
+                    {
+                        "from": "5511999999999",
+                        "type": "text",
+                        "text": {"body": "quero uma proposta"},
+                    }
+                ]
+            ),
+        )
+    assert resposta.status_code == 200
+    assert resposta.content == b""
+    assert "falha ao enviar a resposta do webhook" in caplog.text
+    assert client.get("/v1/encaminhamentos").json()[0]["pergunta"] == "quero uma proposta"
+
+
+def test_subida_avisa_quando_faltam_segredos(monkeypatch, caplog) -> None:
+    monkeypatch.delenv("ATENDEIA_SENHA", raising=False)
+    monkeypatch.delenv("ATENDEIA_SESSION_SECRET", raising=False)
+    monkeypatch.delenv("ATENDEIA_DATABASE_URL", raising=False)
+    monkeypatch.delenv("ATENDEIA_WHATSAPP_APP_SECRET", raising=False)
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_TOKEN", "token")
+    monkeypatch.setenv("ATENDEIA_WHATSAPP_PHONE_ID", "1099")
+    with caplog.at_level("WARNING", logger="atendeia"):
+        _app_de_producao()
+    assert "painel e fila abertos" in caplog.text
+    assert "webhook sem assinatura" in caplog.text
 
 
 def test_webhook_sem_remetente_guarda_e_nao_envia() -> None:

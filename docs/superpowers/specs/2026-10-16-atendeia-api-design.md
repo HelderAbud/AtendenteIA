@@ -355,3 +355,21 @@ A rota continua sem sessão. As páginas e o exemplo JSON de três campos não m
 Os recortes 1 a 12 permanecem. Nenhuma rota, página ou teste muda. O exemplo JSON de três campos no README permanece.
 
 A seção `Fora deste recorte` deixa de citar WhatsApp e painel. A frase passa a ser: modelo de linguagem, PDF, planilha e modelo de mensagem pronta. O título da seção permanece.
+
+## Recorte 14
+
+Os recortes 1 a 13 permanecem. O envio da `resposta` passa a poder usar um modelo de mensagem pronta da Meta. Não há modelo de linguagem. O telefone não entra na lista. O classificador não muda.
+
+`_criar_enviar_whatsapp` ganha `modelo`. Vazio conta como ausente. Sem modelo, o corpo continua `type` `text` e `text.body` é a `resposta`. Com modelo, o corpo é `type` `template`: o nome é o valor recebido, o idioma é `pt_BR` e a `resposta` entra no único parâmetro de texto do corpo do modelo. A URL, o `Authorization`, o destino e o `timeout` de 10 segundos permanecem. Falha no envio continua `raise_for_status`: a rota antiga segue `502` e o webhook segue `200` vazio.
+
+No processo, o nome vem de `ATENDEIA_WHATSAPP_TEMPLATE`. Vazio conta como ausente. As duas rotas que já enviam usam a mesma função. O exemplo JSON de três campos não muda. A frase `Fora deste recorte` perde «modelo de mensagem pronta» e fica: modelo de linguagem, PDF e planilha.
+
+## Recorte 15
+
+Os recortes 1 a 14 permanecem na resposta que já era válida, com estes ajustes. O telefone continua fora da lista. A subida não falha quando a senha, o segredo de sessão ou o segredo do aplicativo estão vazios: o processo só avisa no log.
+
+`POST /v1/whatsapp` devolve os cinco campos e não chama o envio, mesmo com `de`. O envio fica só no webhook. Texto com mais de 500 caracteres é `422` `{ "erro": "pergunta_invalida" }` nessa rota e em `POST /v1/perguntas`, e não entra na lista. No webhook, texto maior que 500 devolve `200` vazio e não chama o atendimento.
+
+Um `422` que não seja da pergunta ou do texto responde `{ "erro": "requisicao_invalida" }`. O classificador casa o sinal com a palavra inteira, ou com a palavra que começa por esse sinal e termina numa flexão curta. `apagar`, `terminal` e `determinar` ficam `desconhecido`. `vencimento` continua `prazo`.
+
+A senha do login é comparada sem vazar por tempo. Depois de cinco senhas erradas do mesmo cliente, a sexta responde `429` e mostra `Muitas tentativas.` O atendimento e o envio do webhook rodam fora do laço de eventos. Falha de envio no webhook continua `200` vazio e passa a ser registrada no log. O recorte 14, quando for feito, aplica o modelo só no envio do webhook. A rota pública continua sem envio.
