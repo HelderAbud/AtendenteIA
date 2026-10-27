@@ -385,3 +385,15 @@ O PDF precisa ter texto selecionável. A leitura usa `pypdf`. O texto de todas a
 Arquivo ausente é `FileNotFoundError`. Arquivo que não é PDF é `PdfReadError`. PDF sem texto, tema ausente, tema repetido ou resposta em branco é `ValueError` na carga, antes de `obter`.
 
 A dependência nova é `pypdf>=5.1` em `requirements.txt`. O teste grava o PDF. Nenhum PDF entra no Git.
+
+## Recorte 17
+
+Os recortes 1 a 16 permanecem. A API em execução continua lendo `data/vertice_ti.json`. Nenhuma rota, página ou variável de ambiente muda. O classificador não muda. Não há CSV, Google Sheets, fórmula calculada nem modelo de linguagem. O telefone não entra na lista. O rodapé do README continua citando planilha, porque o processo ainda não abre esse arquivo.
+
+`BasePlanilha` fica em `app/base.py` e oferece `obter(tema)` no mesmo formato da base JSON: `resposta` e `encaminhar_humano`. `Atendimento` não muda e pode receber esse objeto no lugar da base JSON. As rotas continuam com o JSON.
+
+O arquivo é `.xlsx`. A leitura usa `openpyxl` e só a primeira aba. As outras abas são ignoradas. A primeira linha, sem espaços nas pontas e em minúsculas, é exatamente `tema` e `resposta`. Cada linha seguinte traz um tema e a resposta. Linha em que as duas células ficam vazias é ignorada. Tema fora da lista, tema repetido ou resposta em branco é erro. `encaminhar_humano` não vem do arquivo: é verdadeiro só em `desconhecido`. O valor guardado na célula vira texto. Fórmula não é calculada. O resultado passa pela mesma validação da base JSON.
+
+Arquivo ausente é `FileNotFoundError`. Arquivo que não é planilha é `zipfile.BadZipFile`. Cabeçalho errado, coluna a mais, tema ausente, tema fora da lista, tema repetido ou resposta em branco é `ValueError` na carga, antes de `obter`.
+
+A dependência nova é `openpyxl>=3.1` em `requirements.txt`. O teste grava a planilha. Nenhuma planilha entra no Git.
