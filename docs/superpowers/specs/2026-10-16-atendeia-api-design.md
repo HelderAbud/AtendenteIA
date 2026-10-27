@@ -373,3 +373,15 @@ Os recortes 1 a 14 permanecem na resposta que já era válida, com estes ajustes
 Um `422` que não seja da pergunta ou do texto responde `{ "erro": "requisicao_invalida" }`. O classificador casa o sinal com a palavra inteira, ou com a palavra que começa por esse sinal e termina numa flexão curta. `apagar`, `terminal` e `determinar` ficam `desconhecido`. `vencimento` continua `prazo`.
 
 A senha do login é comparada sem vazar por tempo. Depois de cinco senhas erradas do mesmo cliente, a sexta responde `429` e mostra `Muitas tentativas.` O atendimento e o envio do webhook rodam fora do laço de eventos. Falha de envio no webhook continua `200` vazio e passa a ser registrada no log. O recorte 14, quando for feito, aplica o modelo só no envio do webhook. A rota pública continua sem envio.
+
+## Recorte 16
+
+Os recortes 1 a 15 permanecem. A API em execução continua lendo `data/vertice_ti.json`. Nenhuma rota, página ou variável de ambiente muda. O classificador não muda. Não há OCR, planilha nem modelo de linguagem. O telefone não entra na lista. O rodapé do README continua citando PDF, porque o processo ainda não abre esse arquivo.
+
+`BasePdf` fica em `app/base.py` e oferece `obter(tema)` no mesmo formato da base JSON: `resposta` e `encaminhar_humano`. `Atendimento` não muda e pode receber esse objeto no lugar da base JSON. As rotas continuam com o JSON.
+
+O PDF precisa ter texto selecionável. A leitura usa `pypdf`. O texto de todas as páginas entra na ordem, separado em linhas. Uma linha que, sem espaços nas pontas e em minúsculas, é exatamente `prazo`, `sla`, `renovacao`, `boleto`, `chamado` ou `desconhecido` abre um bloco. As linhas seguintes, até o próximo tema, formam a `resposta`, unidas por um espaço. `encaminhar_humano` não vem do arquivo: é verdadeiro só em `desconhecido`. O resultado passa pela mesma validação da base JSON.
+
+Arquivo ausente é `FileNotFoundError`. Arquivo que não é PDF é `PdfReadError`. PDF sem texto, tema ausente, tema repetido ou resposta em branco é `ValueError` na carga, antes de `obter`.
+
+A dependência nova é `pypdf>=5.1` em `requirements.txt`. O teste grava o PDF. Nenhum PDF entra no Git.
