@@ -1,6 +1,8 @@
 from pathlib import Path
 
+import pytest
 from pypdf import PdfWriter
+from pypdf.errors import PdfReadError
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 from app.atendimento import Atendimento
@@ -77,3 +79,46 @@ def test_pdf_devolve_os_seis_temas(tmp_path: Path) -> None:
     assert resposta["encaminhar_humano"] is False
     assert resposta["fluxo"] == "suporte"
     assert resposta["resumo"] is None
+
+
+def test_pdf_ausente(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        BasePdf(tmp_path / "ausente.pdf")
+
+
+def test_arquivo_que_nao_e_pdf(tmp_path: Path) -> None:
+    caminho = tmp_path / "falso.pdf"
+    caminho.write_bytes(b"nao-pdf")
+    with pytest.raises(PdfReadError):
+        BasePdf(caminho)
+
+
+def test_pdf_sem_texto(tmp_path: Path) -> None:
+    caminho = tmp_path / "vazio.pdf"
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    writer.write(caminho)
+    with pytest.raises(ValueError):
+        BasePdf(caminho)
+
+
+def test_pdf_sem_um_tema(tmp_path: Path) -> None:
+    caminho = tmp_path / "incompleto.pdf"
+    _gravar_pdf(caminho, [linha for linha in LINHAS if linha != "boleto"])
+    with pytest.raises(ValueError):
+        BasePdf(caminho)
+
+
+def test_pdf_repete_tema(tmp_path: Path) -> None:
+    caminho = tmp_path / "repetido.pdf"
+    _gravar_pdf(caminho, LINHAS + ["prazo", "Outro prazo."])
+    with pytest.raises(ValueError):
+        BasePdf(caminho)
+
+
+def test_pdf_com_resposta_em_branco(tmp_path: Path) -> None:
+    caminho = tmp_path / "branco.pdf"
+    linhas = [linha for linha in LINHAS if linha != "O contrato vale 12 meses."]
+    _gravar_pdf(caminho, linhas)
+    with pytest.raises(ValueError):
+        BasePdf(caminho)
