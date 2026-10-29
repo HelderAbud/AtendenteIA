@@ -129,7 +129,7 @@ git commit -m "feat: read the knowledge base from a spreadsheet"
 - Consumes: `BasePlanilha`
 - Produces: falha na carga, antes de `obter`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Acrescentar em `tests/test_base_planilha.py`:
 
@@ -184,17 +184,17 @@ def test_planilha_com_resposta_em_branco(tmp_path: Path) -> None:
         BasePlanilha(caminho)
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `.venv\Scripts\python.exe -m pytest tests/test_base_planilha.py::test_planilha_ausente tests/test_base_planilha.py::test_arquivo_que_nao_e_planilha tests/test_base_planilha.py::test_planilha_com_coluna_a_mais -v`
 
 Expected: FAIL. Ausência pode já passar se a Task 1 conferiu o arquivo. Arquivo ilegível ou coluna a mais ainda não pode ser aceito como base válida.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
-Completar só o que a Task 1 ainda deixar passar. Não capturar `BadZipFile` para transformar em outro erro. Não alterar rotas nem o README.
+Completar só o que a Task 1 ainda deixar passar. Não capturar `BadZipFile` para transformar em outro erro. Não alterar rotas nem o README. Na execução, os seis testes passaram sem mudança em `app/base.py`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `.venv\Scripts\python.exe -m pytest -q`
 
