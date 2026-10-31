@@ -42,6 +42,8 @@ Com `ATENDEIA_SENHA` e `ATENDEIA_SESSION_SECRET`, a página do atendente, a list
 
 `POST /v1/whatsapp` recebe `{ "texto": "..." }` e devolve a mesma resposta de `POST /v1/perguntas`. O encaminhamento entra na mesma lista. Esta rota não envia mensagem. O envio sai só do webhook, com `ATENDEIA_WHATSAPP_TOKEN` e `ATENDEIA_WHATSAPP_PHONE_ID`.
 
+`POST /v1/instagram` recebe `{ "texto": "..." }` e devolve a mesma resposta de `POST /v1/perguntas`. O encaminhamento entra na mesma lista. Esta rota não envia mensagem.
+
 `GET /v1/whatsapp/webhook` confirma a Meta quando `hub.mode` é `subscribe` e `hub.verify_token` é igual a `ATENDEIA_WHATSAPP_VERIFY_TOKEN`. A resposta é o `hub.challenge` em texto. `POST` nessa mesma rota lê a primeira mensagem de texto do aviso, usa o mesmo atendimento e devolve `200` vazio. O número segue no envio e não entra na lista. Sem o token de verificação, o `GET` responde `403`.
 
 Com `ATENDEIA_WHATSAPP_APP_SECRET`, o `POST /v1/whatsapp/webhook` só segue quando `X-Hub-Signature-256` é `sha256=` mais o HMAC-SHA256 do corpo cru. Assinatura ausente ou errada responde `403` com `{ "erro": "assinatura_recusada" }` e não chama o atendimento. Sem o segredo, o `POST` continua como está.

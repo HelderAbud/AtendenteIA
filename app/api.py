@@ -134,6 +134,10 @@ def criar_app(
     def whatsapp(corpo: TextoIn):
         return atendimento.responder(corpo.texto)
 
+    @app.post("/v1/instagram")
+    def instagram(corpo: TextoIn):
+        return atendimento.responder(corpo.texto)
+
     @app.get("/v1/whatsapp/webhook")
     def whatsapp_verificacao(
         hub_mode: str = Query(default="", alias="hub.mode"),

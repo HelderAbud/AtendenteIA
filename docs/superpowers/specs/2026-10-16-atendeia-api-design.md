@@ -397,3 +397,13 @@ O arquivo é `.xlsx`. A leitura usa `openpyxl` e só a primeira aba. As outras a
 Arquivo ausente é `FileNotFoundError`. Arquivo que não é planilha é `zipfile.BadZipFile`. Cabeçalho errado, coluna a mais, tema ausente, tema fora da lista, tema repetido ou resposta em branco é `ValueError` na carga, antes de `obter`.
 
 A dependência nova é `openpyxl>=3.1` em `requirements.txt`. O teste grava a planilha. Nenhuma planilha entra no Git.
+
+## Recorte 18
+
+Os recortes 1 a 17 permanecem. O classificador, o `data/vertice_ti.json` e as rotas que já existem não mudam. Não há webhook da Meta, webhook do Telegram, envio de resposta nem modelo de linguagem. Identificador de quem escreveu não entra na lista. O rodapé do README permanece.
+
+`POST /v1/instagram` e `POST /v1/telegram` recebem `{ "texto": "..." }`. O corpo da resposta é o mesmo que `POST /v1/perguntas` devolveria para esse texto: `tema`, `resposta`, `encaminhar_humano`, `fluxo` e `resumo`. O `id` não volta nessa resposta.
+
+Texto ausente, só com espaços, de outro tipo ou com mais de 500 caracteres responde `422` `{ "erro": "pergunta_invalida" }` e não entra na lista. Campo extra é ignorado e não é guardado. As duas rotas não chamam o envio, mesmo que a função de envio esteja configurada. Não pedem sessão.
+
+Quando a base pede humano, o texto entra na mesma lista, com o próximo `id`, na ordem de chegada. Uma pergunta, um texto do Instagram e um texto do Telegram compartilham a fila. A `pergunta` gravada é o texto recebido. `GET /health` continua sem ler a base. As páginas e o exemplo JSON de três campos não mudam.
