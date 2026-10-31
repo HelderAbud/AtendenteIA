@@ -456,6 +456,40 @@ def test_instagram_invalido_nao_entra_na_lista() -> None:
     assert client.get("/v1/encaminhamentos").json() == []
 
 
+def test_telegram_entra_na_mesma_lista_e_nao_envia() -> None:
+    enviados = []
+    app = criar_app_de_arquivo(
+        ARQUIVO,
+        enviar=lambda destino, texto: enviados.append((destino, texto)),
+    )
+    client = TestClient(app)
+    client.post("/v1/perguntas", json={"pergunta": "quero uma proposta"})
+    client.post("/v1/instagram", json={"texto": "quero falar sobre o clima"})
+    telegram = client.post(
+        "/v1/telegram",
+        json={"texto": "quero uma proposta", "de": "usuario-telegram"},
+    )
+    assert telegram.status_code == 200
+    assert telegram.json()["fluxo"] == "venda"
+    assert enviados == []
+    lista = client.get("/v1/encaminhamentos").json()
+    assert [item["id"] for item in lista] == [1, 2, 3]
+    assert [item["pergunta"] for item in lista] == [
+        "quero uma proposta",
+        "quero falar sobre o clima",
+        "quero uma proposta",
+    ]
+    assert "usuario-telegram" not in str(lista)
+
+
+def test_telegram_invalido_nao_entra_na_lista() -> None:
+    client = TestClient(criar_app_de_arquivo(ARQUIVO))
+    ausente = client.post("/v1/telegram", json={})
+    assert ausente.status_code == 422
+    assert ausente.json() == {"erro": "pergunta_invalida"}
+    assert client.get("/v1/encaminhamentos").json() == []
+
+
 def test_rota_publica_nao_envia_mesmo_se_o_envio_falha() -> None:
     def quebra(destino, texto):
         raise RuntimeError("meta")
