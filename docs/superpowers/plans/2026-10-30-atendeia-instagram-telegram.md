@@ -117,7 +117,7 @@ git commit -m "feat: answer instagram texts on the same handoff list"
 - Consumes: `atendimento.responder`
 - Produces: `POST /v1/telegram`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Acrescentar em `tests/test_api.py`:
 
@@ -156,25 +156,25 @@ def test_telegram_invalido_nao_entra_na_lista() -> None:
     assert client.get("/v1/encaminhamentos").json() == []
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `.venv\Scripts\python.exe -m pytest tests/test_api.py::test_telegram_entra_na_mesma_lista_e_nao_envia -v`
 
 Expected: FAIL with `404`, because `POST /v1/telegram` ainda não existe.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Em `app/api.py`, acrescentar `POST /v1/telegram` com as mesmas regras da rota do Instagram. Não chama `enviar`.
 
 No README, no parágrafo do Instagram, incluir o Telegram na mesma frase: as duas rotas recebem `{ "texto": "..." }`, devolvem a mesma resposta e não enviam mensagem.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `.venv\Scripts\python.exe -m pytest -q`
 
 Expected: the full suite passes. If a Postgres test is skipped, subir o banco no Ubuntu na porta 5437 e rodar de novo.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Só executar se o usuário pedir commit nesta sessão.
 
