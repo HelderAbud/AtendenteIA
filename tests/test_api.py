@@ -423,6 +423,39 @@ def test_whatsapp_invalido_nao_envia() -> None:
     assert client.get("/v1/encaminhamentos").json() == []
 
 
+def test_instagram_responde_como_a_pergunta_e_nao_envia() -> None:
+    enviados = []
+    app = criar_app_de_arquivo(
+        ARQUIVO,
+        enviar=lambda destino, texto: enviados.append((destino, texto)),
+    )
+    client = TestClient(app)
+    texto = "quero uma proposta"
+    pergunta = client.post("/v1/perguntas", json={"pergunta": texto})
+    instagram = client.post(
+        "/v1/instagram",
+        json={"texto": texto, "de": "usuario-instagram"},
+    )
+    assert instagram.status_code == 200
+    assert instagram.json() == pergunta.json()
+    assert enviados == []
+    lista = client.get("/v1/encaminhamentos").json()
+    assert [item["pergunta"] for item in lista] == [texto, texto]
+    assert [item["id"] for item in lista] == [1, 2]
+    assert "usuario-instagram" not in str(lista)
+
+
+def test_instagram_invalido_nao_entra_na_lista() -> None:
+    client = TestClient(criar_app_de_arquivo(ARQUIVO))
+    vazio = client.post("/v1/instagram", json={"texto": "   "})
+    longo = client.post("/v1/instagram", json={"texto": "a" * 501})
+    assert vazio.status_code == 422
+    assert vazio.json() == {"erro": "pergunta_invalida"}
+    assert longo.status_code == 422
+    assert longo.json() == {"erro": "pergunta_invalida"}
+    assert client.get("/v1/encaminhamentos").json() == []
+
+
 def test_rota_publica_nao_envia_mesmo_se_o_envio_falha() -> None:
     def quebra(destino, texto):
         raise RuntimeError("meta")
