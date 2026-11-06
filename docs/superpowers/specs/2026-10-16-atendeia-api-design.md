@@ -413,3 +413,15 @@ Quando a base pede humano, o texto entra na mesma lista, com o próximo `id`, na
 Os recortes 1 a 18 permanecem. A API em execução continua lendo `data/vertice_ti.json`. Nenhuma rota, página ou variável de ambiente muda. O classificador não muda. Não há cliente de modelo, chave, Ollama nem API paga. O telefone não entra na lista. O rodapé do README permanece, porque o processo ainda não chama um modelo.
 
 `Atendimento` ganha o argumento opcional `reescrever`. Ausente, `resposta` continua o texto que a base devolveu. Presente, a função recebe só esse texto. O campo `resposta` passa a ser o retorno quando ele é uma `str` com conteúdo depois de tirar os espaços das pontas. O valor usado é o retorno inteiro. Retorno em branco, de outro tipo ou exceção mantém o texto da base. A exceção registra o aviso `falha ao reescrever a resposta` no logger `atendeia`. Tema, `encaminhar_humano`, fluxo e resumo não passam pela função. A lista continua sendo gravada pelas regras atuais, também quando a reescrita falha. `criar_app_de_arquivo` e `_app_de_producao` não recebem a função. Nenhuma dependência nova.
+
+## Recorte 20
+
+Os recortes 1 a 19 permanecem. A API em execução continua lendo `data/vertice_ti.json`. Nenhuma rota ou página muda. O classificador não muda. Não há API paga, chave nem segundo modelo. O telefone não entra na lista. A suíte não liga o Ollama.
+
+`_criar_reescrever_ollama(modelo)` devolve a função que `Atendimento` já aceita. Ela faz `POST http://127.0.0.1:11434/api/generate` com `httpx`, `timeout=10` e o corpo `model`, `prompt` e `stream` falso. O `prompt` é exatamente:
+
+`Reescreva o texto abaixo em português, com outras palavras. Não acrescente fato, data, número, nome nem assunto que não esteja no texto. Devolva só o texto reescrito.`
+
+mais uma linha em branco e o texto da base. O retorno da função é o campo `response` inteiro quando ele é uma `str` com conteúdo depois de `strip`. Falha de rede, status de erro, campo ausente, outro tipo ou texto em branco levanta exceção. Quem chama continua sendo `Atendimento`: a resposta HTTP segue `200` com o texto da base e o aviso que já existe.
+
+`ATENDEIA_OLLAMA_MODELO` vazia ou ausente não cria a função e não avisa na subida. Com nome, `_app_de_producao` passa a função nos dois caminhos, com ou sem `ATENDEIA_DATABASE_URL`. `criar_app_de_arquivo` ganha o argumento opcional e o repassa. O rodapé do README passa a `PDF e planilha.` O exemplo de ambiente ganha `ATENDEIA_OLLAMA_MODELO=`. Nenhuma dependência nova.

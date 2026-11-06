@@ -270,6 +270,28 @@ def _criar_enviar_whatsapp(token: str, phone_id: str, modelo: str | None = None)
     return enviar
 
 
+def _criar_reescrever_ollama(modelo: str):
+    def reescrever(texto: str) -> str:
+        prompt = (
+            "Reescreva o texto abaixo em português, com outras palavras. "
+            "Não acrescente fato, data, número, nome nem assunto que não "
+            "esteja no texto. Devolva só o texto reescrito.\n\n"
+            f"{texto}"
+        )
+        resposta = httpx.post(
+            "http://127.0.0.1:11434/api/generate",
+            json={"model": modelo, "prompt": prompt, "stream": False},
+            timeout=10,
+        )
+        resposta.raise_for_status()
+        conteudo = resposta.json().get("response")
+        if not isinstance(conteudo, str) or not conteudo.strip():
+            raise ValueError("resposta vazia do modelo")
+        return conteudo
+
+    return reescrever
+
+
 def criar_app_de_arquivo(
     caminho: Path,
     banco: Path | None = None,
