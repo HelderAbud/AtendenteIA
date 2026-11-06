@@ -7,7 +7,13 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api import _app_de_producao, _criar_enviar_whatsapp, criar_app, criar_app_de_arquivo
+from app.api import (
+    _app_de_producao,
+    _criar_enviar_whatsapp,
+    _criar_reescrever_ollama,
+    criar_app,
+    criar_app_de_arquivo,
+)
 from app.atendimento import Atendimento
 from app.classificador import classificar
 
@@ -1179,3 +1185,56 @@ def test_app_de_producao_exige_a_assinatura(monkeypatch) -> None:
     )
     assert sem_assinatura.status_code == 200
     assert len(chamadas) == 2
+
+
+def test_ollama_reescreve_o_texto_da_base(monkeypatch) -> None:
+    chamadas = []
+
+    def post(url, json, timeout):
+        chamadas.append((url, json, timeout))
+
+        class Resposta:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"response": " texto reescrito "}
+
+        return Resposta()
+
+    monkeypatch.setattr("app.api.httpx.post", post)
+    reescrever = _criar_reescrever_ollama("modelo-teste")
+    assert reescrever("texto da base") == " texto reescrito "
+    assert chamadas == [
+        (
+            "http://127.0.0.1:11434/api/generate",
+            {
+                "model": "modelo-teste",
+                "prompt": (
+                    "Reescreva o texto abaixo em português, com outras palavras. "
+                    "Não acrescente fato, data, número, nome nem assunto que não "
+                    "esteja no texto. Devolva só o texto reescrito.\n\n"
+                    "texto da base"
+                ),
+                "stream": False,
+            },
+            10,
+        )
+    ]
+
+
+def test_ollama_sem_texto_util_levanta_erro(monkeypatch) -> None:
+    def post(url, json, timeout):
+        class Resposta:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"response": "   "}
+
+        return Resposta()
+
+    monkeypatch.setattr("app.api.httpx.post", post)
+    reescrever = _criar_reescrever_ollama("modelo-teste")
+    with pytest.raises(ValueError, match="resposta vazia do modelo"):
+        reescrever("texto da base")
