@@ -407,3 +407,9 @@ Os recortes 1 a 17 permanecem. O classificador, o `data/vertice_ti.json` e as ro
 Texto ausente, só com espaços, de outro tipo ou com mais de 500 caracteres responde `422` `{ "erro": "pergunta_invalida" }` e não entra na lista. Campo extra é ignorado e não é guardado. As duas rotas não chamam o envio, mesmo que a função de envio esteja configurada. Não pedem sessão.
 
 Quando a base pede humano, o texto entra na mesma lista, com o próximo `id`, na ordem de chegada. Uma pergunta, um texto do Instagram e um texto do Telegram compartilham a fila. A `pergunta` gravada é o texto recebido. `GET /health` continua sem ler a base. As páginas e o exemplo JSON de três campos não mudam.
+
+## Recorte 19
+
+Os recortes 1 a 18 permanecem. A API em execução continua lendo `data/vertice_ti.json`. Nenhuma rota, página ou variável de ambiente muda. O classificador não muda. Não há cliente de modelo, chave, Ollama nem API paga. O telefone não entra na lista. O rodapé do README permanece, porque o processo ainda não chama um modelo.
+
+`Atendimento` ganha o argumento opcional `reescrever`. Ausente, `resposta` continua o texto que a base devolveu. Presente, a função recebe só esse texto. O campo `resposta` passa a ser o retorno quando ele é uma `str` com conteúdo depois de tirar os espaços das pontas. O valor usado é o retorno inteiro. Retorno em branco, de outro tipo ou exceção mantém o texto da base. A exceção registra o aviso `falha ao reescrever a resposta` no logger `atendeia`. Tema, `encaminhar_humano`, fluxo e resumo não passam pela função. A lista continua sendo gravada pelas regras atuais, também quando a reescrita falha. `criar_app_de_arquivo` e `_app_de_producao` não recebem a função. Nenhuma dependência nova.
