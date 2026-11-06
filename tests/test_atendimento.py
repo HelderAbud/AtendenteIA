@@ -129,3 +129,54 @@ def test_mesmo_postgres_sobrevive_entre_atendimentos() -> None:
             "resumo": "Pergunta: quero uma proposta. Motivo: venda sem resposta na base.",
         }
     ]
+
+
+def test_reescreve_so_o_texto_da_base() -> None:
+    atendimento = Atendimento(
+        classificar,
+        BaseSempreHumano(),
+        reescrever=lambda texto: f"novo {texto}",
+    )
+    assert atendimento.responder("quando vence meu contrato?") == {
+        "tema": "prazo",
+        "resposta": "novo da base",
+        "encaminhar_humano": True,
+        "fluxo": "suporte",
+        "resumo": None,
+    }
+    assert atendimento.encaminhamentos() == [
+        {
+            "id": 1,
+            "pergunta": "quando vence meu contrato?",
+            "fluxo": "suporte",
+            "resumo": None,
+        }
+    ]
+
+
+def test_reescrever_que_falha_mantem_o_texto_da_base(caplog) -> None:
+    def reescrever(texto: str) -> str:
+        raise RuntimeError("modelo")
+
+    atendimento = Atendimento(
+        classificar, BaseSempreHumano(), reescrever=reescrever
+    )
+    with caplog.at_level("WARNING", logger="atendeia"):
+        resposta = atendimento.responder("quando vence meu contrato?")
+    assert resposta["resposta"] == "da base"
+    assert resposta["tema"] == "prazo"
+    assert len(atendimento.encaminhamentos()) == 1
+    assert "falha ao reescrever a resposta" in caplog.text
+
+
+def test_reescrever_vazio_ou_de_outro_tipo_mantem_o_texto_da_base() -> None:
+    for retorno in ("   ", None, 12):
+        atendimento = Atendimento(
+            classificar,
+            BaseFalsa(),
+            reescrever=lambda texto, valor=retorno: valor,
+        )
+        assert (
+            atendimento.responder("quando vence meu contrato?")["resposta"]
+            == "texto-prazo"
+        )
