@@ -301,10 +301,11 @@ def criar_app_de_arquivo(
     enviar=None,
     verificar_token: str | None = None,
     app_secret: str | None = None,
+    reescrever=None,
 ) -> FastAPI:
     base = BaseConhecimento(caminho)
     return criar_app(
-        Atendimento(classificar, base, banco, postgres_url),
+        Atendimento(classificar, base, banco, postgres_url, reescrever=reescrever),
         senha=senha,
         session_secret=session_secret,
         enviar=enviar,
@@ -327,6 +328,8 @@ def _app_de_producao() -> FastAPI:
     )
     verificar_token = os.environ.get("ATENDEIA_WHATSAPP_VERIFY_TOKEN") or None
     app_secret = os.environ.get("ATENDEIA_WHATSAPP_APP_SECRET") or None
+    nome_ollama = os.environ.get("ATENDEIA_OLLAMA_MODELO") or None
+    reescrever = _criar_reescrever_ollama(nome_ollama) if nome_ollama else None
     if not (senha and session_secret):
         logger.warning(
             "painel e fila abertos: faltam ATENDEIA_SENHA ou ATENDEIA_SESSION_SECRET"
@@ -345,6 +348,7 @@ def _app_de_producao() -> FastAPI:
             enviar=enviar,
             verificar_token=verificar_token,
             app_secret=app_secret,
+            reescrever=reescrever,
         )
     return criar_app_de_arquivo(
         caminho,
@@ -353,6 +357,7 @@ def _app_de_producao() -> FastAPI:
         enviar=enviar,
         verificar_token=verificar_token,
         app_secret=app_secret,
+        reescrever=reescrever,
     )
 
 

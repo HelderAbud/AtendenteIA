@@ -76,4 +76,4 @@ Pergunta ausente, nula, de outro tipo, em branco ou com mais de 500 caracteres d
 
 ## Fora deste recorte
 
-Modelo de linguagem, PDF e planilha.
+PDF e planilha.

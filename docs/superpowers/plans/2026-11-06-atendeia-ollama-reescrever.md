@@ -156,7 +156,7 @@ git commit -m "feat: ask ollama to rewrite the base answer"
 - Consumes: `_criar_reescrever_ollama`, `Atendimento(..., reescrever=None)`
 - Produces: `_app_de_producao` lê `ATENDEIA_OLLAMA_MODELO`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Acrescentar em `tests/test_api.py`:
 
@@ -234,25 +234,25 @@ No README, trocar o rodapé para:
 
 Em `.env.example`, acrescentar a linha `ATENDEIA_OLLAMA_MODELO=`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `.venv\Scripts\python.exe -m pytest tests/test_api.py::test_app_de_producao_reescreve_pelo_ollama -v`
 
 Expected: FAIL because `resposta` ainda é o texto da base, não `texto reescrito`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `criar_app_de_arquivo` ganha `reescrever=None` e chama `Atendimento(classificar, base, banco, postgres_url, reescrever=reescrever)`.
 
 Em `_app_de_producao`, ler `os.environ.get("ATENDEIA_OLLAMA_MODELO") or None`. Com nome, criar a função. Sem nome, passar `None`. Entregar `reescrever=reescrever` nas duas chamadas de `criar_app_de_arquivo`. Não acrescentar aviso de subida para essa variável.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `.venv\Scripts\python.exe -m pytest -q`
 
 Expected: the full suite passes. If a Postgres test is skipped, subir o banco no Ubuntu na porta 5437 e rodar de novo.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Só executar se o usuário pedir commit nesta sessão.
 
