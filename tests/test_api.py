@@ -1238,3 +1238,70 @@ def test_ollama_sem_texto_util_levanta_erro(monkeypatch) -> None:
     reescrever = _criar_reescrever_ollama("modelo-teste")
     with pytest.raises(ValueError, match="resposta vazia do modelo"):
         reescrever("texto da base")
+
+
+def test_app_de_producao_reescreve_pelo_ollama(monkeypatch) -> None:
+    def post(url, json, timeout):
+        class Resposta:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"response": "texto reescrito"}
+
+        return Resposta()
+
+    monkeypatch.setattr("app.api.httpx.post", post)
+    monkeypatch.setenv("ATENDEIA_OLLAMA_MODELO", "modelo-teste")
+    monkeypatch.delenv("ATENDEIA_DATABASE_URL", raising=False)
+    monkeypatch.delenv("ATENDEIA_WHATSAPP_TOKEN", raising=False)
+    monkeypatch.delenv("ATENDEIA_WHATSAPP_PHONE_ID", raising=False)
+    client = TestClient(_app_de_producao())
+    resposta = client.post(
+        "/v1/perguntas", json={"pergunta": "quando vence meu contrato?"}
+    )
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert corpo["tema"] == "prazo"
+    assert corpo["resposta"] == "texto reescrito"
+    assert corpo["fluxo"] == "suporte"
+
+
+def test_app_de_producao_sem_modelo_mantem_o_texto_da_base(monkeypatch) -> None:
+    chamadas = []
+
+    def post(url, json, timeout):
+        chamadas.append(url)
+        raise RuntimeError("ollama")
+
+    monkeypatch.setattr("app.api.httpx.post", post)
+    monkeypatch.setenv("ATENDEIA_OLLAMA_MODELO", "")
+    monkeypatch.delenv("ATENDEIA_DATABASE_URL", raising=False)
+    client = TestClient(_app_de_producao())
+    resposta = client.post(
+        "/v1/perguntas", json={"pergunta": "quando vence meu contrato?"}
+    )
+    assert resposta.status_code == 200
+    assert resposta.json()["resposta"] == (
+        "O contrato de suporte da Vértice TI vale 12 meses a partir da assinatura."
+    )
+    assert chamadas == []
+
+
+def test_app_de_producao_mantem_a_base_quando_o_ollama_falha(monkeypatch, caplog) -> None:
+    def post(url, json, timeout):
+        raise RuntimeError("ollama")
+
+    monkeypatch.setattr("app.api.httpx.post", post)
+    monkeypatch.setenv("ATENDEIA_OLLAMA_MODELO", "modelo-teste")
+    monkeypatch.delenv("ATENDEIA_DATABASE_URL", raising=False)
+    client = TestClient(_app_de_producao())
+    with caplog.at_level("WARNING", logger="atendeia"):
+        resposta = client.post(
+            "/v1/perguntas", json={"pergunta": "quando vence meu contrato?"}
+        )
+    assert resposta.status_code == 200
+    assert resposta.json()["resposta"] == (
+        "O contrato de suporte da Vértice TI vale 12 meses a partir da assinatura."
+    )
+    assert "falha ao reescrever a resposta" in caplog.text
