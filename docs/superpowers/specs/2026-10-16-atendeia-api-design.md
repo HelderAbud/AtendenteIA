@@ -425,3 +425,11 @@ Os recortes 1 a 19 permanecem. A API em execução continua lendo `data/vertice_
 mais uma linha em branco e o texto da base. O retorno da função é o campo `response` inteiro quando ele é uma `str` com conteúdo depois de `strip`. Falha de rede, status de erro, campo ausente, outro tipo ou texto em branco levanta exceção. Quem chama continua sendo `Atendimento`: a resposta HTTP segue `200` com o texto da base e o aviso que já existe.
 
 `ATENDEIA_OLLAMA_MODELO` vazia ou ausente não cria a função e não avisa na subida. Com nome, `_app_de_producao` passa a função nos dois caminhos, com ou sem `ATENDEIA_DATABASE_URL`. `criar_app_de_arquivo` ganha o argumento opcional e o repassa. O rodapé do README passa a `PDF e planilha.` O exemplo de ambiente ganha `ATENDEIA_OLLAMA_MODELO=`. Nenhuma dependência nova.
+
+## Recorte 21
+
+Os recortes 1 a 20 permanecem. O classificador, as rotas, as páginas e o Ollama não mudam. Não há OCR, planilha no processo nem PDF versionado. O telefone não entra na lista. Nenhuma dependência nova.
+
+`criar_app_de_arquivo` ganha `pdf=False`. Falso continua em `BaseConhecimento`. Verdadeiro abre o mesmo caminho com `BasePdf`. Arquivo ausente é `FileNotFoundError`. Arquivo que não é PDF é `pypdf.errors.PdfReadError`. Base inválida continua `ValueError` na carga, antes de responder.
+
+`ATENDEIA_BASE_PDF` vazia ou ausente não avisa e mantém `data/vertice_ti.json`. Com caminho, `_app_de_producao` usa esse arquivo e `pdf=True` nos dois caminhos, com ou sem `ATENDEIA_DATABASE_URL`. O rodapé do README passa a `Planilha.` O exemplo de ambiente ganha `ATENDEIA_BASE_PDF=`. O teste grava o PDF temporário. Nenhum PDF entra no Git.

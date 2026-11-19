@@ -6,6 +6,7 @@ from pathlib import Path
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
+from pypdf.errors import PdfReadError
 
 from app.api import (
     _app_de_producao,
@@ -16,6 +17,7 @@ from app.api import (
 )
 from app.atendimento import Atendimento
 from app.classificador import classificar
+from tests.test_base_pdf import LINHAS, _gravar_pdf
 
 RAIZ = Path(__file__).resolve().parents[1]
 ARQUIVO = RAIZ / "data" / "vertice_ti.json"
@@ -1305,3 +1307,27 @@ def test_app_de_producao_mantem_a_base_quando_o_ollama_falha(monkeypatch, caplog
         "O contrato de suporte da Vértice TI vale 12 meses a partir da assinatura."
     )
     assert "falha ao reescrever a resposta" in caplog.text
+
+
+def test_app_de_arquivo_le_pdf(tmp_path: Path) -> None:
+    caminho = tmp_path / "base.pdf"
+    _gravar_pdf(caminho, LINHAS)
+    client = TestClient(criar_app_de_arquivo(caminho, pdf=True))
+    resposta = client.post(
+        "/v1/perguntas", json={"pergunta": "quando vence meu contrato?"}
+    )
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert corpo["tema"] == "prazo"
+    assert corpo["resposta"] == "O contrato vale 12 meses."
+    assert corpo["fluxo"] == "suporte"
+    assert corpo["encaminhar_humano"] is False
+
+
+def test_pdf_ausente_ou_ilegivel_impede_a_subida(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        criar_app_de_arquivo(tmp_path / "ausente.pdf", pdf=True)
+    falso = tmp_path / "falso.pdf"
+    falso.write_bytes(b"nao e pdf")
+    with pytest.raises(PdfReadError):
+        criar_app_de_arquivo(falso, pdf=True)

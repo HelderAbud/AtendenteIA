@@ -15,7 +15,7 @@ from starlette.requests import Request
 from pydantic import BaseModel, field_validator
 
 from app.atendimento import Atendimento
-from app.base import BaseConhecimento
+from app.base import BaseConhecimento, BasePdf
 from app.classificador import classificar
 
 logger = logging.getLogger("atendeia")
@@ -302,8 +302,9 @@ def criar_app_de_arquivo(
     verificar_token: str | None = None,
     app_secret: str | None = None,
     reescrever=None,
+    pdf: bool = False,
 ) -> FastAPI:
-    base = BaseConhecimento(caminho)
+    base = BasePdf(caminho) if pdf else BaseConhecimento(caminho)
     return criar_app(
         Atendimento(classificar, base, banco, postgres_url, reescrever=reescrever),
         senha=senha,
